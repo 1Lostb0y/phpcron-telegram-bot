@@ -1,0 +1,30 @@
+{
+  "name": "phpcron/telegram-bot",
+  "type": "library",
+  "description": "PHP Cron Class For boldwolf bot",
+  "keywords": ["cron", "bot", "wolfofperisa"],
+  "license": "MIT",
+  "homepage": "https://boldwolf.ir",
+  "support": {
+    "issues": "https://boldwolf.ir/page/doc",
+    "source": "https://boldwolf.ir/page/source"
+  },
+  "authors": [
+    {
+      "name": "Amin Azmoodeh",
+      "email": "aminazmoo@gmail.com",
+      "homepage": "https://boldwolf.ir",
+      "role": "Developer"
+    },
+    {
+      "name": "PHP Telegram Cron boldwolf Bot Team",
+      "homepage": "https://boldwolf.ir/page/team",
+      "role": "Developer"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "phpcron\\CronBot\\": "src/"
+    }
+  }
+}
