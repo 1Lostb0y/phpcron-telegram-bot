@@ -138,47 +138,37 @@ class R
                 '3EfgWHj0YIDrW'
             ],
             'win_ferqe' => [
-                'oFzSEXOHWgcS3vII65',
-                //'dL5qLAlhMn3va',
-                //'Jh1OUT6Pw9j9K',
-            ],
-            'win_vf' => [
-                'LLLcQATbFptqWBhy9j',
-                //'dL5qLAlhMn3va',
-                //'Jh1OUT6Pw9j9K',
-            ],
-            'win_qatel' => [
-                'vJJdOHlCadVHuDpblK',
+                'mBdlYQjXaWrm7QG0hr',
+                'dL5qLAlhMn3va',
+                'Jh1OUT6Pw9j9K',
             ],
             'win_wolf' => [
-                'lJNRuXGJWYMYT4Sdk',
-                'Cj6iVpTu2oBWGzNTZu'
+                'iQd8LQFSTsN4Q',
+                'Qz5fQFZArQuBADXvLI',
+                '122teRA3vWUZ9u',
+                '9ltCaW2Tkc2qI',
+                'cQAATp9nWV0lO',
+                'BBzSyIfPJUREc'
             ],
             'nothing' => [
-                'yZN9gvvYgipvxx16WY',
+                'nYogYgSmIJaIo',
             ],
             'win_lover' => [
                 'ZbTHNleoxODNOqmdbt',
                 'rkSu72ptAZseQ',
             ],
             'win_trap' => [
-                'YV8tx3s4uqy6SA9giq',
+                'Z1LYiyIPhnG9O',
             ],
             'win_firefighter' => [
-                'LiWzVIUH7R0HPd6S4d',
-                //'TIA3X7L65HENllpNVP',
+                'H1AUNLbQb52MOx7JLF',
+                'TIA3X7L65HENllpNVP',
             ],
             'win_vampire' => [
-                'OdqaMh6ie4VNJ8yOiz',
-            ],
-            'win_black' => [
-                'XErjHJoSS20FvXCymw',
-            ],
-            'win_joker' => [
-                '6pJ7FkUgwI0FeGBSQo',
+                'kaehtC8QT8nqpqAJnm',
             ],
             'winner_monafeq' => [
-                'YV8tx3s4uqy6SA9giq',
+                'jUbTTgmm89aUtwhhz9',
             ]
 
 

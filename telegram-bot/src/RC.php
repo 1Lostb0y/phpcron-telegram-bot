@@ -124,40 +124,29 @@ class RC
 
     public static function RandomGif($key,$mode = false){
         $ar = [
-            'Punisher' =>[
-                'cZ7nzNB7Z2mfVhhg7v', //ok
+            'start_game' =>[
+                '13Z6M89Ak65Gxy',
+                'dW0rcEXzdqDkCIpbE6',
+                '3ohzdQUe71SON8Ao7K',
+                'YNk9HRcH9zJfi'
+            ], 'start_challenge' =>[
+                'YrlujTss4rUZHsmQFi'
             ],
-            'Foolish' =>[
-                'x5xZ2U6uLM5rEryxLA',
-            ],
-            'Madness' => [
-                    'k2CoRnRNuZaVmMD8Dd'
-                ],
+            'startchoas' =>
+                ['lNG02dpc9E3lmlvb3S'],
             'Romantic' =>[
-                'MD5pwq3oKLRPJCgGc5', //ok
-            ],
-            'sincity' =>[
-                '7VBCogvs6LdXo0xNpW', //ok
-            ],
-            'Vampire' =>[
-                'DUb2Jqil0FfIUO9vKm', //ok
-            ],
-            'SuperNatrual' =>[
-                'CTD7o0zqxY4mrOyhGD', //ok
-            ],
-            'Werewolf' =>[
-                'JIOC2mOYTGnEgQrfqm', //ok
-                '5rXwgvovYksTrKs2wS', //ok
-            ],
-            'western' =>[
-                'V86qK7HIShrfYnh7jx',
-                //'QMyL0YeYo1guvXuyPe', //ok
-            ],
+                'UVZ0E4lp4lKgSDY22z',
+                'Wt1CLHBsMx5Iwt3UZS',
+                'dBm9G6pjcfnVKkgH7G'
+            ]
+
 
         ];
 
         if($mode){
+            if($mode == "Romantic") {
                 $key = $mode;
+            }
         }
         if(isset($ar[$key])) {
             $data_re = $ar[$key];

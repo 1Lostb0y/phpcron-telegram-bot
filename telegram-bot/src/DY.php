@@ -29,17 +29,7 @@ class DY
 
         self::LoverMessage();
 
-        if(R::CheckExit('GamePl:KhalifaSelectRole')) {
-            if ((int)R::Get('GamePl:Day_no') == (int)R::Get('GamePl:KhalifaSelectRole')) {
-               $GroupMessage = self::$Dt->LG->_('NotFindKhalifaRoleGroup');
-               HL::SaveMessage($GroupMessage);
-                HL::GamedEnd('monafeq');
-                return false;
-            }
-        }
         self::SendDayRole();
-
-
 
     }
     public static function LoverMessage(){
@@ -88,21 +78,7 @@ class DY
         if(R::CheckExit('GamePl:CheckDay')){
             return false;
         }
-
-
-        /*
-        if(R::CheckExit('GamePl:vgWin')){
-            HL::GamedEnd('vf');
-            return false;
-        }
-        */
-
-        self::CheckMidWolf();
-        self::CheckFeriga();
-
         R::GetSet(true,'GamePl:CheckDay');
-        self::CheckSharlatan();
-        self::CheckShahzade();
         // چک کردن کنت
         self::CheckKent();
         // چک کردن تفنگدار
@@ -114,262 +90,9 @@ class DY
         self::CheckPrincess();
         // چک کردن کاراگاه
         self::CheckKaragah();
-        self::CheckBlackKnight();
         // چک کردن جاسوس
         self::CheckSpy();
-        self::CheckMargita();
-        self::CeckMados();
-        return true;
-    }
 
-    public static function CheckMidWolf(){
-
-        // شب اول چک نکن
-        if(R::Get('GamePl:Day_no') == 0){
-            return false;
-        }
-
-        if(R::Get('GamePl:Day_no') !== R::Get('GamePl:midwolfSendDay')){
-            return false;
-        }
-        $MidWolf = HL::_getPlayerByRole('role_midwolf');
-        if(!$MidWolf){
-            return false;
-        }
-
-        R::GetSet(R::Get('GamePl:midwolfSendDay') + 1,'GamePl:midwolfSendDay');
-        // اگر مید ولف مرده بود بازم باید بیخیال بشیم مسلما
-        if($MidWolf['user_state'] !== 1){
-            return false;
-        }
-        if(R::CheckExit('GamePl:Selected:'.$MidWolf['user_id']) == false){
-            return false;
-        }
-
-        $selected = R::Get('GamePl:Selected:'.$MidWolf['user_id']);
-
-        $MidWolfName = HL::ConvertName($MidWolf['user_id'],$MidWolf['fullname_game']);
-        $Detial = HL::_getPlayer($selected);
-        $U_name = HL::ConvertName($Detial['user_id'],$Detial['fullname_game']);
-
-        switch ($Detial['user_role']){
-            case 'role_WolfJadogar':
-            case 'role_WolfTolle':
-            case 'role_WolfGorgine':
-            case 'role_Wolfx':
-            case 'role_WolfAlpha':
-            case 'role_Honey':
-            case 'role_enchanter':
-            case 'role_WhiteWolf':
-            case 'role_forestQueen':
-            case 'role_betaWolf':
-                $MidWolfMessage = self::$Dt->LG->_('MidWolfWhenAttakWolf',array("{0}" => $U_name));
-                return HL::SendMessage($MidWolfMessage,$MidWolf['user_id']);
-                break;
-            default:
-                if(HL::R(100) < SE::_s('CovertMidWolf')){
-                    // Player Messsage
-                    $PlayerMessageBitten = self::$Dt->LG->_('PlayerMessageWhenMidWolfBitten', array(
-                        "{0}" => $MidWolfName
-                    ));
-                    HL::SendMessage($PlayerMessageBitten,$Detial['user_id']);
-
-                    $MidWolfMessage =  self::$Dt->LG->_('MidwolfWhenBittenPlayer', array(
-                        "{0}" => $U_name
-                    ));
-                    HL::SendMessage($MidWolfMessage,$MidWolf['user_id']);
-
-                    // Wolf Message
-                    $WolfMsg = self::$Dt->LG->_('WolfMessageWhenMidBitten',array(
-                        "{0}" => $U_name
-                    ));
-                    HL::SendForWolfTeam($WolfMsg,[$MidWolf['user_id']]);
-
-                    HL::BittanPlayerMidnight($selected);
-
-                    return false;
-                }
-
-
-                // Group Message
-                $GroupMessage = self::$Dt->LG->_('MidWolfAttackPlayerGroupMessage',array(
-                    "{0}" => $U_name,
-                    "{1}" => self::$Dt->LG->_($Detial['user_role']."_n")
-                ));
-
-                HL::SaveMessage($GroupMessage);
-                // Player Message
-                $MsgUser = self::$Dt->LG->_('eat_you');
-                HL::SendMessage($MsgUser,$Detial['user_id'],'eat_wolf');
-                HL::UserDead($Detial,'eat');
-                HL::SaveGameActivity($Detial,'eat',$MidWolf);
-
-                return true;
-                break;
-        }
-
-    }
-
-    public static function CheckMargita(){
-        if(R::Get('GamePl:Day_no') !== R::Get('GamePl:MargitaSendDay')){
-            return false;
-        }
-        $Margita = HL::_getPlayerByRole('role_Margita');
-        if($Margita == false){
-            return false;
-        }
-        R::GetSet(R::Get('GamePl:MargitaSendDay') + 2,'GamePl:MargitaSendDay');
-        if($Margita['user_state'] !== 1){
-            return false;
-        }
-        if(!R::CheckExit('GamePl:Selected:'.$Margita['user_id'])){
-            return false;
-        }
-        $MargitaName = HL::ConvertName($Margita['user_id'],$Margita['fullname_game']);
-
-        $selected = R::Get('GamePl:Selected:'.$Margita['user_id']);
-        $Detial = HL::_getPlayer($selected);
-        $U_name = HL::ConvertName($selected,$Detial['fullname_game']);
-
-        if($Detial['user_state'] !== 1){
-            return false;
-        }
-
-        switch ($Detial['user_role']){
-            case 'role_betaWolf':
-                $KillerMessage = self::$Dt->LG->_('KillPlMessage');
-                HL::SendMessage($KillerMessage,$Margita['user_id']);
-                $GroupMessage =  self::$Dt->LG->_('KillPLMessageGroup',array("{0}" => $MargitaName ,"{1}" => self::$Dt->LG->_($Margita['user_role']."_n")));
-                HL::SaveMessage($GroupMessage);
-                HL::UserDead($Margita,'betawolf');
-
-                return false;
-             break;
-            case 'role_Joker':
-                $MargitaMsg = self::$Dt->LG->_('GuardJokerMArgita',array("{0}" => $U_name));
-                HL::SendMessage($MargitaMsg,$Margita['user_id']);
-                $PlayerMsg = self::$Dt->LG->_('JokerMessageMargita');
-                HL::SendMessage($PlayerMsg,$Detial['user_id']);
-                return false;
-           break;
-            default:
-                $PlayerMsg = self::$Dt->LG->_('MargitaKillPlayer');
-                HL::SendMessage($PlayerMsg,$Detial['user_id']);
-                $GroupMsg = self::$Dt->LG->_('GroupMessageMArgita',array("{0}" => $U_name,"{1}" => self::$Dt->LG->_($Detial['user_role']."_n")));
-                HL::SaveMessage($GroupMsg);
-                HL::UserDead($Detial,'Margita');
-                HL::SaveGameActivity($Detial,'Margita',$Margita);
-                  return true;
-            break;
-        }
-
-
-        return true;
-
-    }
-
-    public static function CheckShahzade(){
-
-        if(!R::CheckExit('GamePl:MargaritaKilled')){
-            return false;
-        }
-
-        $shahzade = HL::_getPlayerByRole('role_Shahzade');
-        if($shahzade == false){
-            return false;
-        }
-        if($shahzade['user_state'] !== 1){
-            return false;
-        }
-
-        if(!R::CheckExit('GamePl:Selected:'.$shahzade['user_id'])){
-            return false;
-        }
-
-        $ShahzadeName = HL::ConvertName($shahzade['user_id'],$shahzade['fullname_game']);
-
-        $selected = R::Get('GamePl:Selected:'.$shahzade['user_id']);
-        $Detial = HL::_getPlayer($selected);
-        $U_name = HL::ConvertName($selected,$Detial['fullname_game']);
-
-        if($Detial['user_state'] !== 1){
-
-            return false;
-        }
-
-        switch ($Detial['user_role']){
-            default:
-
-                if(HL::R(100) <= 70){
-
-                    $PlayerMessage  = self::$Dt->LG->_('PlayerMessageKillShazade');
-                    HL::SendMessage($PlayerMessage,$Detial['user_id']);
-
-                    $ShahzadeMessage = self::$Dt->LG->_('ShahzadeKillPlayerMessage',array(
-                        "{0}" => $U_name,
-                    ));
-                    HL::SendMessage($ShahzadeMessage,$shahzade['user_id']);
-
-                    $GroupMessage  = self::$Dt->LG->_('GroupMessageKillPlayerShahzade',array(
-                        "{0}" => $U_name,
-                        "{1}" => self::$Dt->LG->_($Detial['user_role']."_n")
-                    ));
-                    HL::SaveMessage($GroupMessage);
-                    HL::UserDead($Detial,'shahzade');
-                    HL::SaveGameActivity($Detial,'shahzade',$shahzade);
-                    return true;
-                }
-
-                $ShahzadeMessage  = self::$Dt->LG->_('ShahzadeMessageNoKillPlayer',array(
-                    "{0}" => $U_name,
-                ));
-                HL::SendMessage($ShahzadeMessage,$shahzade['user_id']);
-            break;
-        }
-
-
-        return true;
-
-    }
-
-    public static function CheckFeriga(){
-        $feriga = HL::_getPlayerByRole('role_feriga');
-
-        if($feriga == false){
-            return false;
-        }
-
-
-        // اگر شیطان مرده بود بازم باید بیخیال بشیم مسلما
-        if($feriga['user_state'] !== 1){
-
-            return false;
-        }
-        if(R::CheckExit('GamePl:Selected:'.$feriga['user_id']) == false){
-            return false;
-        }
-        $selected = R::Get('GamePl:Selected:'.$feriga['user_id']);
-        $Detial = HL::_getPlayer($selected);
-        if($Detial['user_state'] !== 1){
-            return false;
-        }
-        $U_name = HL::ConvertName($Detial['user_id'],$Detial['fullname_game']);
-        $CowName = HL::ConvertName($feriga['user_id'],$feriga['fullname_game']);
-
-
-
-        /*
-        if($Detial['user_role'] == 'role_viego'){
-            R::GetSet(true,'GamePl:vgWin');
-            return false;
-        }
-        */
-
-
-        $GroupMessage = self::$Dt->LG->_('FerigaKillPlayer',array("{0}" => $U_name,"{1}" =>  self::$Dt->LG->_('user_role',array("{0}"=> self::$Dt->LG->_($Detial['user_role']."_n")))));
-        HL::SaveMessage($GroupMessage);
-        HL::UserDead($Detial,'kill');
-        HL::SaveGameActivity($Detial,'kill',$feriga);
         return true;
     }
 
@@ -394,7 +117,7 @@ class DY
                if(SE::_s('EscapeKillerKnight') < HL::R(100)) {
                    $PrincessMessage = self::$Dt->LG->_('PrincessPrisonerVampireAndKnight',array("{0}" => $U_name));
                    HL::SendMessage($PrincessMessage,$Princess['user_id']);
-                     $PlayerMessage = ($Detial['user_role'] == "role_Qatel" ? self::$Dt->LG->_('PrincessPrisonerKiller') : self::$Dt->LG->_('PrincessPrisonerKnight')  );
+                     $PlayerMessage = ($Detial['role_Qatel'] ? self::$Dt->LG->_('PrincessPrisonerKiller') : self::$Dt->LG->_('PrincessPrisonerKnight')  );
                      HL::SendMessage($PlayerMessage,$Detial['user_id']);
                    return  true;
                }
@@ -459,63 +182,7 @@ class DY
 
         return true;
     }
-    public static function CheckBlackKnight(){
-        $Black = HL::_getPlayerByRole('role_BlackKnight');
-        if($Black == false){
-            return false;
-        }
-        if($Black['user_state'] !== 1){
-            return false;
-        }
-        if(!R::CheckExit('GamePl:Selected:'.$Black['user_id'])){
-            return false;
-        }
 
-        $selected = R::Get('GamePl:Selected:'.$Black['user_id']);
-        $Detial = HL::_getPlayer($selected);
-        $U_name = HL::ConvertName($selected,$Detial['fullname_game']);
-
-        if(R::CheckExit('GamePl:role_angel:AngelIn:'.$Detial['user_id'])){
-            $CowAngelBlocked = self::$Dt->LG->_('CowHiler',array("{0}" =>$U_name));
-            HL::SendMessage($CowAngelBlocked,$Black['user_id']);
-            $PlayerMessage = self::$Dt->LG->_('BlackKnightDPlayerAngelMessagePL');
-            HL::SendMessage($PlayerMessage,$Detial['user_id']);
-            $AngelId = R::Get('GamePl:role_angel:AngelIn:'.$Detial['user_id']);
-            $AngelMessage =  self::$Dt->LG->_('BlackKnightDPlayerAngelMessageANG',array("{0}" =>$U_name));
-            HL::SendMessage($AngelMessage,$AngelId);
-            return true;
-        }
-
-        $Groupsg = self::$Dt->LG->_('BlackKnightDeadPlayerGroup',array("{0}" => $U_name,"{1}" => self::$Dt->LG->_($Detial['user_role']."_n")));
-        HL::SaveMessage($Groupsg);
-        $PLayerMsg = self::$Dt->LG->_('BlackKnightDeadPlayerMessage');
-        HL::SendMessage($PLayerMsg,$Detial['user_id']);
-        HL::UserDead($Detial,'Black');
-        HL::SaveGameActivity($Detial,'Black',$Black);
-        return true;
-    }
-
-    public static function CeckMados(){
-        $Madosa = HL::_getPlayerByRole('role_Madosa');
-        if($Madosa == false){
-            return false;
-        }
-        if($Madosa['user_state'] !== 1){
-            return false;
-        }
-        if(!R::CheckExit('GamePl:Selected:'.$Madosa['user_id'])){
-            return false;
-        }
-        $selected = R::Get('GamePl:Selected:'.$Madosa['user_id']);
-        $Detial = HL::_getPlayer($selected);
-        $U_name = HL::ConvertName($selected,$Detial['fullname_game']);
-
-        $GroupMessage = self::$Dt->LG->_('MadosaKillDay',array("{0}" => $U_name))." ".self::$Dt->LG->_('user_role',array("{0}" => self::$Dt->LG->_($Detial['user_role']."_n")));
-        HL::SaveMessage($GroupMessage);
-        HL::UserDead($Detial,'Madosa');
-        HL::SaveGameActivity($Detial,'Madosa',$Madosa);
-        return true;
-    }
     public static function CheckSpy(){
         $Spy = HL::_getPlayerByRole('role_Spy');
         if($Spy == false){
@@ -669,9 +336,6 @@ class DY
         if(R::CheckExit('GamePl:HoneyUser:'.$Detial['user_id'])){
             $HoneyChangeRole = "role_WolfGorgine_n";
         }
-        if($Detial['user_role'] == "role_Wolfx"){
-            $Detial['user_role'] = "role_rosta";
-        }
         $UserRole = $Detial['user_role']."_n";
         $KaragahMessage = self::$Dt->LG->_('DetectiveSnoop',array("{0}" =>$U_name,"{1}" => self::$Dt->LG->_($HoneyChangeRole ?? $UserRole )));
         HL::SendMessage($KaragahMessage,$Karagah['user_id']);
@@ -755,21 +419,8 @@ class DY
                     }
                     return true;
                     break;
-                case 'role_Madosa':
-                    $rows = HL::GetPlayerNonKeyboard([$Lucifer['user_id']], 'DySlDodge_madosa');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $Lucifer['user_id'],
-                        'text' => self::$Dt->LG->_('MadosaAskDay'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$Lucifer['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
                 case 'role_karagah':
-                    $rows = HL::GetPlayerNonKeyboard([$Lucifer['user_id']], 'DySlDodge_Karagah');
+                    $rows = HL::GetPlayerNonKeyboard([], 'DySlDodge_Karagah');
                     $inline_keyboard = new InlineKeyboard(...$rows);
                     $result =  Request::sendMessage([
                         'chat_id' => $Lucifer['user_id'],
@@ -781,32 +432,6 @@ class DY
                         R::rpush($result->getResult()->getMessageId()."_".$Lucifer['user_id'],'GamePl:MessageNightSend');
                     }
                     return true;
-                    break;
-                case 'role_BlackKnight':
-                    $rows = HL::GetPlayerNonKeyboard([$Lucifer['user_id']], 'DySlDodge_BlackKnight');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $Lucifer['user_id'],
-                        'text' => self::$Dt->LG->_('BlackKnightAsk'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$Lucifer['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
-                case 'role_Margita':
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DySlDodge_Margita');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $Lucifer['user_id'],
-                        'text' => self::$Dt->LG->_('AskMargita'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$Lucifer['user_id'],'GamePl:MessageNightSend');
-                    }
                     break;
                     case 'role_Princess':
                     $rows = HL::GetPlayerNonKeyboard([], 'DySlDodge_Princess');
@@ -859,28 +484,6 @@ class DY
 
         return false;
     }
-
-    public static function CheckSharlatan(){
-        if(R::CheckExit('GamePl:SharlatanInTofan')){
-            if(R::Get('GamePl:SharlatanInTofan') == R::Get('GamePl:Day_no')){
-               $RandomRole =  HL::GetRoleRandom(['role_Qatel','role_Archer','role_Sharlatan','role_hilda']);
-               if($RandomRole){
-                   $U_name = HL::ConvertName($RandomRole['user_id'],$RandomRole['fullname_game']);
-                   $GroupMessage = self::$Dt->LG->_('SharlatanTofanMessage',array("{0}" => $U_name,"{1}" => self::$Dt->LG->_($RandomRole['user_role']."_n")));
-                   HL::SaveMessage($GroupMessage);
-                   HL::UserDead($RandomRole['user_id'],'Sharlatan');
-                   $Sharlatan = HL::_getPlayerByRole('role_Sharlatan');
-                   if($Sharlatan) {
-                       HL::SaveGameActivity($RandomRole, 'Sharlatan', $Sharlatan);
-                   }
-                   R::GetSet(3,'timer');
-                   R::GetSet(((int) R::Get('GamePl:SharlatanTofan')) - 1 , 'GamePl:SharlatanTofan');
-                   return true;
-               }
-
-            }
-        }
-    }
     public static function SendDayCheck($user_id = false,$count = false){
         $Check = R::LRange(0,-1,'GamePl:SendDayRole');
         if($count){
@@ -898,7 +501,7 @@ class DY
     public static function SendDayRole(){
 
 
-        $Players = HL::_getPlayerINRole(['role_Princess','role_feriga','role_Shahzade','role_midwolf','role_BlackKnight','role_Sharlatan','role_Margita','role_Madosa','role_kentvampire','role_isra','role_Solh','role_tofangdar','role_Kadkhoda','role_Ruler','role_karagah','role_Spy','role_trouble','role_Ahangar','role_KhabGozar']);
+        $Players = HL::_getPlayerINRole(['role_Princess','role_kentvampire','role_isra','role_Solh','role_tofangdar','role_Kadkhoda','role_Ruler','role_karagah','role_Spy','role_trouble','role_Ahangar','role_KhabGozar']);
 
         $CountPlayer = count($Players);
         $checkCount =  self::SendDayCheck(false,true);
@@ -906,23 +509,14 @@ class DY
             return false;
         }
         foreach ($Players  as $row){
-
             if(R::CheckExit('GamePl:PrincessPrisoner:'.$row['user_id'])){
                 continue;
             }
-
-            if(R::CheckExit('GamePl:SharlatanInTofan')){
-                if(R::Get('GamePl:SharlatanInTofan') == R::Get('GamePl:Day_no')){
-                   continue;
-                }
-            }
-
             if(self::SendDayCheck($row['user_id'])){
                 continue;
             }
             self::UserInConvert($row['user_id']);
-
-            if( R::CheckExit('GamePl:NotSend_'.$row['user_role'])  || R::CheckExit('GamePl:'.$row['user_role'].":notSend")  ){
+            if( R::CheckExit('GamePl:NotSend_'.$row['user_role']) == true || R::CheckExit('GamePl:'.$row['user_role'].":notSend") == true ){
                 continue;
             }
 
@@ -931,33 +525,7 @@ class DY
             if($CheckDodge){
                 continue;
             }
-
             switch ($row['user_role']){
-                case 'role_midwolf':
-                    if(R::Get('GamePl:Day_no') == 0){
-                        continue 2;
-                    }
-
-                    if(R::Get('GamePl:Day_no') !== R::Get('GamePl:midwolfSendDay')){
-                        continue 2;
-                    }
-
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_midwolf');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('AskMidWolf'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-
-                    if($result->isOk()){
-                        R::rpush($row['user_id'],'GamePl:SendNight');
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
-
                 case 'role_Solh':
                     $inline_keyboard = new InlineKeyboard([
                         ['text' => self::$Dt->LG->_('solh_btn'), 'callback_data' => "DaySelect_Solh/" . self::$Dt->chat_id]
@@ -971,32 +539,6 @@ class DY
                     if($result->isOk()) {
                         R::GetSet($result->getResult()->getMessageId(), 'GamePl:role_solh:Message_id:' . $row['user_id']);
                         R::GetSet(true, 'GamePl:NotSend_role_Solh');
-                    }
-                    break;
-                case 'role_BlackKnight':
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_BlackKnight');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('BlackKnightAsk'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
-                    case 'role_feriga':
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_feriga');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('AskFeriga'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
                     }
                     break;
                 case 'role_tofangdar':
@@ -1075,37 +617,8 @@ class DY
                         R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
                     }
                     break;
-                    case 'role_Margita':
-                        if(R::Get('GamePl:Day_no') !== R::Get('GamePl:MargitaSendDay')){
-                            continue 2;
-                        }
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_Margita');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('AskMargita'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
-                    case 'role_Madosa':
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_madosa');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('MadosaAskDay'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;
                 case 'role_Princess':
-                    if((int) R::Get('GamePl:Night_no') <= 2)  continue 2;
+                    if(R::Get('GamePl:Night_no') <= 2)  continue 2;
 
                     $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_Princess');
                     $inline_keyboard = new InlineKeyboard(...$rows);
@@ -1125,22 +638,6 @@ class DY
                     $result =  Request::sendMessage([
                         'chat_id' => $row['user_id'],
                         'text' => self::$Dt->LG->_('SpyAsk'),
-                        'reply_markup' => $inline_keyboard,
-                        'parse_mode' => 'HTML',
-                    ]);
-                    if($result->isOk()){
-                        R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:MessageNightSend');
-                    }
-                    break;     
-                    case 'role_Shahzade':
-                        if(!R::CheckExit('GamePl:MargaritaKilled')){
-                            continue 2;
-                        }
-                    $rows = HL::GetPlayerNonKeyboard([$row['user_id']], 'DaySelect_shahzade');
-                    $inline_keyboard = new InlineKeyboard(...$rows);
-                    $result =  Request::sendMessage([
-                        'chat_id' => $row['user_id'],
-                        'text' => self::$Dt->LG->_('AskShahzade'),
                         'reply_markup' => $inline_keyboard,
                         'parse_mode' => 'HTML',
                     ]);
@@ -1179,36 +676,6 @@ class DY
                         R::GetSet($result->getResult()->getMessageId(), 'GamePl:role_Ahangar:Message_id:' . $row['user_id']);
                         R::rpush($result->getResult()->getMessageId()."_".$row['user_id'],'GamePl:EditMarkup');
                     }
-                    break;
-                    case 'role_Sharlatan':
-                        if((int) R::Get('GamePl:SharlatanTofan')  == 0 && (int) R::Get('GamePl:SharlatanTabar') == 0){
-                            continue 2;
-                        }
-                        $ReKeybaord = [];
-                        if((int) R::Get('GamePl:SharlatanTofan') > 0){
-                            $ReKeybaord[] = [
-                               ['text' => self::$Dt->LG->_('SharlatanBtn_Tofan', array("{0}" => R::Get('GamePl:SharlatanTofan'))), 'callback_data' => "DaySelect_SharlatanTofan/" . self::$Dt->chat_id]
-                         ];
-                        }
-                        if((int) R::Get('GamePl:SharlatanTabar') > 0){
-                            $ReKeybaord[] =[
-                                ['text' => self::$Dt->LG->_('SharlatanBtn_Edam', array("{0}" => R::Get('GamePl:SharlatanTabar'))), 'callback_data' => "DaySelect_SharlatanTabar/" . self::$Dt->chat_id]
-                            ];
-                        }
-
-                    $inline_keyboard = (count($ReKeybaord) ? new InlineKeyboard(...$ReKeybaord) : new InlineKeyboard([[]]));
-                     if(count($ReKeybaord)) {
-                         $result = Request::sendMessage([
-                             'chat_id' => $row['user_id'],
-                             'text' => self::$Dt->LG->_('AskSarlatan'),
-                             'parse_mode' => 'HTML',
-                             'reply_markup' => $inline_keyboard,
-                         ]);
-                         if ($result->isOk()) {
-                             R::GetSet($result->getResult()->getMessageId(), 'GamePl:role_Sharlatan:Message_id:' . $row['user_id']);
-                             R::rpush($result->getResult()->getMessageId() . "_" . $row['user_id'], 'GamePl:EditMarkup');
-                         }
-                     }
                     break;
                     case 'role_isra':
                     $inline_keyboard = new InlineKeyboard([

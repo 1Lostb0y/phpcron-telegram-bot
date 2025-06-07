@@ -107,7 +107,7 @@ class join
                     R::Del('GamePl:UserJoin');
 
                     if($countPlayer < $MinPlayers) {
-                        HL::GroupClosedThGame('join');
+                        HL::GroupClosedThGame();
                         self::UpdatePlayerList();
                         self::DeleteMessage();
                         return Request::sendMessage([
@@ -125,6 +125,71 @@ class join
 
     }
 
+    public static function GetRoleMafia($count_Player){
+        $roleList = [];
+        $MafiaRole = SE::MafiaRole();
+
+        $CNCountAddMafia = round((35 * $count_Player / 100));
+        for ($i = 0; $i < round(min(max($CNCountAddMafia, 3), 1)); $i++) {
+            array_push($roleList, $MafiaRole[$i]);
+        }
+        $CN_add = 0;
+        if($CNCountAddMafia > 3){
+            $CN_add = $CNCountAddMafia - 3;
+            for ($i = 0; $i < round($CN_add); $i++) {
+                array_push($roleList, "role_Mafia");
+            }
+        }
+
+
+        $CitizenRole = SE::RoleMafiaMode();
+        foreach ($MafiaRole as $key => $role){
+            switch ($role){
+                default:
+                    array_push($roleList, $CitizenRole[$i]);
+                    break;
+            }
+        }
+        if($count_Player > 6){
+            for ($i = 0; $i < ($count_Player - 6 - $CN_add); $i++){
+                array_push($roleList, "role_Citizen");
+            }
+        }
+
+        shuffle($roleList);
+        shuffle($roleList);
+        shuffle($roleList);
+        shuffle($roleList);
+
+        return $roleList;
+    }
+    public static function MafiaUserRole(){
+        $countPlayer = HL::_getCountPlayer();
+        $balance = false;
+        $attemp = 0;
+        do {
+            $attemp++;
+            if($attemp >= 550){
+                HL::GroupClosedThGame();
+                self::UpdatePlayerList();
+                self::DeleteMessage();
+                Request::sendMessage([
+                    'chat_id' => self::$Dt->chat_id,
+                    'text' => self::$Dt->LG->_('ErrorStartGame_Balance'),
+                ]);
+                return false;
+            }
+
+            $MafiaRoles = self::GetRoleMafia($countPlayer);
+            $AnArray = array_slice($MafiaRoles, 0, ($countPlayer));
+
+            if(count($AnArray) !== $countPlayer){
+                $balance = false;
+            }else {
+                $balance = true;
+            }
+        }while($balance);
+    }
     public static function GameStarted(){
         // ثبت زمان شروع بازی
         HL::ChangeStartGameTime();
@@ -244,13 +309,13 @@ class join
 
         $balanced = false;
         $attemp = 0;
-        $nonVg = ['role_Khaen','role_Vahshi','role_Honey','role_Sharlatan','role_monafeq','role_Lucifer','role_monafeq','role_Qatel','role_WolfTolle','role_WolfGorgine','role_Wolfx','role_WolfAlpha','role_WolfJadogar','role_enchanter','role_WhiteWolf','role_forestQueen','role_Firefighter','role_IceQueen','role_Vampire','role_Bloodthirsty','role_Archer','role_Joker','role_Harly','role_franc','role_Royce','role_hilda','role_betaWolf','role_forestQueen','role_Madosa','role_kentvampire'];
+        $nonVg = ['role_Khaen','role_Vahshi','role_Honey','role_monafeq','role_Lucifer','role_monafeq','role_Qatel','role_WolfTolle','role_WolfGorgine','role_Wolfx','role_WolfAlpha','role_WolfJadogar','role_enchanter','role_WhiteWolf','role_forestQueen','role_Firefighter','role_IceQueen','role_Vampire','role_Bloodthirsty','role_Archer'];
         $GameMode = R::Get('GamePl:gameModePlayer');
         $WolfRole = SE::WolfRole();
         do {
             $attemp++;
-            if($attemp >= 1000){
-                HL::GroupClosedThGame('join');
+            if($attemp >= 550){
+                HL::GroupClosedThGame();
                 self::UpdatePlayerList();
                 self::DeleteMessage();
                 Request::sendMessage([
@@ -327,114 +392,53 @@ class join
 
 
 
-
-
-        
-
-             /*
-
-            if(!in_array('role_feriga',$AnArray)){
-                $AnArray['8'] = "role_feriga";
-            }
-            if(!in_array('role_viego',$AnArray)){
-                $AnArray['9'] = "role_viego";
-            }
-             */
-
-
-
-
-
-
-
-            /*
-            if(in_array('role_IceQueen',$AnArray) && in_array('role_Firefighter',$AnArray) && !in_array('role_Madosa',$AnArray)){
-                $AnArray['6'] = "role_Madosa";
-            }
-            */
-
+            // $AnArray['5'] = "role_Royce";
 
             $Slice = self::SliceRole($AnArray);
             $CountTeam = self::GetCountRole($AnArray);
             $Vg = $Slice['safe'];
             $Enemy = $Slice['enemy'];
 
-
             // در آخر چک کن ببین دو تا تیم برای مبارزه با هم توی روستا وجود دارن  یا نه
             if(count($Vg) > 0 and count($Enemy) > 0){
                 $balanced = true;
             }
-            if($GameMode == 'western'){
-                $balanced = true;
+
+            $RoleWidget = self::GetRoleWight($AnArray,$countPlayer,$CountTeam);
+            $Rosta = $RoleWidget['rosta'];
+            $Wolf = $RoleWidget['wolf'];
+            $Qatel = $RoleWidget['qatel'];
+            $Ferqe = $RoleWidget['ferqe'];
+            $Vampire = $RoleWidget['Vampire'];
+            $blod = $RoleWidget['blod'];
+            $kalan= $RoleWidget['kalan'];
+            $FireFighter = $RoleWidget['FireFighter'];
+            $Monafeq = floor($Rosta + $Wolf + $Qatel + $Ferqe + $Vampire + $FireFighter / $countPlayer);
+
+
+            if($GameMode !== "Foolish") {
+
+                if ($GameMode !== "Vampire") {
+                    // اگه تیم روستا برابر با تیم گرگ نبود و یا روستایی برابر نبود با فرقه و یا فرقه تعدادش بیشتر از روستایی بود و قاتل وزنش بیشتر از گرگ بود بالانس درست نیست
+                    if ($Rosta <= $Wolf || $Ferqe >= $Rosta || ($blod > 0 && $Vampire == 0) || ($blod > 0 && $kalan == 0) || ($Vampire > 0 && $blod == 0) || ($countPlayer < 11 && in_array('role_Royce', $AnArray) && R::Get("role_ferqe") == "off") || (in_array('role_Royce', $AnArray) && !in_array('role_ferqe', $AnArray) && R::Get("role_ferqe") == "on") || ($countPlayer >= 11 && !in_array('role_shekar', $AnArray) && R::Get("role_ferqe") == "on") || (in_array('role_shekar', $AnArray) && !in_array('role_ferqe', $AnArray) && R::Get("role_ferqe") == "on") || (in_array('role_IceQueen', $AnArray) && !in_array('role_Firefighter', $AnArray)) || (!in_array('role_IceQueen', $AnArray) && in_array('role_Firefighter', $AnArray)) || (in_array('role_shekar', $AnArray) && !in_array('role_pishgo', $AnArray)) || (in_array('role_pishgo', $AnArray) && !in_array('role_PishRezerv', $AnArray)) || (!in_array('role_Qatel', $AnArray) && in_array('role_hilda', $AnArray))) {
+                        $balanced = false;
+                    }
+
+                }
+
+                if (($GameMode == "Vampire" && $blod == 0) || ($GameMode == "Vampire" && $Vampire == 0) || ($GameMode == "Vampire" && $Wolf > 0 && $countPlayer < 8) || ($blod > 0 && $Vampire == 0) || ($blod > 0 && $kalan == 0) || ($Vampire > 0 && $blod == 0)) {
+                    $balanced = false;
+                }
             }
-
-
-
-            if(in_array('role_ferqe',$AnArray) && !in_array('role_shekar',$AnArray) || !in_array('role_ferqe',$AnArray) && in_array('role_shekar',$AnArray)){
-                $balanced = false;
+            if($GameMode == "Foolish"){
+                if(!in_array('role_WolfGorgine', $AnArray) || !in_array('role_pishgo', $AnArray) ){
+                    $balanced = false;
+                }
             }
-
-
-
-            if(in_array('role_IceDragon',$AnArray) && !in_array('role_ferqe',$AnArray) || in_array('role_Royce',$AnArray) && !in_array('role_ferqe',$AnArray) || in_array('role_franc',$AnArray) && !in_array('role_ferqe',$AnArray)){
-                $balanced = false;
-            }
-
-
-            if(in_array('role_Sharlatan',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_morgana',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_Archer',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_hilda',$AnArray) && !in_array('role_Qatel',$AnArray)){
-                $balanced = false;
-            }
-
-
-            if(in_array('role_midwolf',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_enchanter',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_betaWolf',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_forestQueen',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_Honey',$AnArray) && !in_array('role_Qatel',$AnArray) || in_array('role_WhiteWolf',$AnArray) && !in_array('role_WolfGorgine',$AnArray)){
-                $balanced = false;
-            }
-
-
-            if(in_array('role_Lilis',$AnArray) || in_array('role_Madosa',$AnArray) || in_array('role_IceQueen',$AnArray) &&  !in_array('role_Firefighter',$AnArray)){
-                $balanced = false;
-            }
-
-
-            if(in_array('role_kentvampire',$AnArray)  &&  !in_array('role_Vampire',$AnArray) || in_array('role_orlok',$AnArray) &&  !in_array('role_Vampire',$AnArray)){
-                $balanced = false;
-            }
-            if(in_array('role_Vampire',$AnArray) && !in_array('role_Bloodthirsty',$AnArray)){
-                $balanced = false;
-            }
-
-            if(in_array('role_Bloodthirsty',$AnArray) && !in_array('role_kalantar',$AnArray)){
-                $balanced = false;
-            }
-
-            if(!in_array('role_BrideTheDead',$AnArray) && in_array('role_BlackKnight',$AnArray) || in_array('role_BrideTheDead',$AnArray) && !in_array('role_BlackKnight',$AnArray)){
-                $balanced = false;
-            }
-
-            if(in_array('role_Khalifa',$AnArray) && !in_array('role_monafeq',$AnArray)){
-                $balanced = false;
-            }
-
-            if(in_array('role_Joker',$AnArray) && !in_array('role_Harly',$AnArray) || !in_array('role_Joker',$AnArray) && in_array('role_Harly',$AnArray)){
-                $balanced = false;
-            }
-            if(in_array('role_IceQueen',$AnArray) && !in_array('role_Firefighter',$AnArray) || !in_array('role_Firefighter',$AnArray) && in_array('role_IceQueen',$AnArray)){
-                $balanced = false;
-            }
-
-            if(in_array('role_feriga',$AnArray) && !in_array('role_viego',$AnArray) || !in_array('role_feriga',$AnArray) && in_array('role_viego',$AnArray)){
-                $balanced = false;
-            }
-
-
-
 
             if($countPlayer !== count($AnArray)){
                 $balanced = false;
             }
-
-
-
 
 
         } while (!$balanced);
@@ -456,75 +460,36 @@ class join
         $Qatel = [];
         $Joker = [];
         $Harly = [];
-        $morgana = [];
         $countJ = 0;
-        $madosa = [];
-        $CountDozd = 0;
         for($i = 0, $iMax = count($Players); $i < $iMax; $i++){
             if(!isset($AnArray[$i])){
                 continue;
             }
             $Team = SE::GetRoleTeam($AnArray[$i]);
-            if(!isset($Players[$i])){
-                continue;
-            }
             $RoleName = $AnArray[$i];
             $user_id = $Players[$i]['user_id'];
             $fullname = $Players[$i]['fullname'];
             $link = HL::ConvertName($user_id,$fullname);
-            $Check = HL::FindePlayerRoleBuy('role_dozd',(float) $user_id);
-            if($Check){
-                if(!in_array($RoleName,$nonVg) && $RoleName !== "role_shekar" && $GameMode !== "Bomber" && $GameMode !== "Foolish" && $GameMode !== "WereWolf" && $GameMode !== "coin" ){
-                    if(HL::R(100) < 50){
-                        if($CountDozd < 3){
-                            $RoleName = "role_dozd";
-                            $CountDozd++;
-                        }
-                    }
-                }
-            }
+
 
             switch ($RoleName){
                 case 'role_pishgo':
                     R::GetSet($link,'GamePl:SearUser');
                     break;
-                case 'role_monafeq':
-                    R::GetSet($link,'GamePl:role_monafeq:link');
-                    break;
                 case 'role_feramason':
                     array_push($Mason,$link);
                     break;
-                    case 'role_morgana':
-                    array_push($morgana,$link);
-                    break;
-                case 'role_Madosa':
-                    array_push($madosa,$link);
-               break;
                 case 'role_WolfTolle':
                 case 'role_WolfGorgine':
                 case 'role_Wolfx':
                     break;
-                case 'role_Sharlatan':
-                    R::GetSet(2,'GamePl:SharlatanTofan');
-                    R::GetSet(1,'GamePl:SharlatanTabar');
-                    R::GetSet($link,'GamePl:role_Sharlatan:InGame');
-                break;
                 case 'role_tofangdar':
-                    R::GetSet(($countPlayer >= 30 ? 3 : 2),'GamePl:GunnerBult');
+                    R::GetSet(2,'GamePl:GunnerBult');
                     break;
                 case 'role_kalantar':
                     R::GetSet(1,'GamePl:SheriffBult');
                     R::GetSet($link,'GamePl:KalanInGame');
                     break;
-                case 'role_Margita':
-                   R::GetSet(1,'GamePl:MargitaSendDay') ;
-                break;
-                case 'role_midwolf':
-                    R::GetSet(2,'GamePl:midwolfSendDay') ;
-                 break;
-                case 'role_Knight':
-                    R::GetSet($link,'GamePl:role_Knight:in_game');
-                break;
                 case 'role_Bloodthirsty':
                     R::GetSet($link,'GamePl:BloodthirstyInGame');
                     break;
@@ -553,13 +518,6 @@ class join
                     R::GetSet($link,'GamePl:role_WolfAlpha:InGame');
                     array_push($Wolf,$link);
                     break;
-                case 'role_BlackKnight':
-                    R::GetSet(2,'GamePl:BlackVoteNo');
-                    R::GetSet($link,'GamePl:role_BlackKnight:InGame');
-                    break;
-                case 'role_BrideTheDead':
-                    R::GetSet($link,'GamePl:role_BrideTheDead:InGame');
-                    break;
                 case 'role_forestQueen':
                     R::GetSet($link,'GamePl:role_forestQueen:InGame');
                     break;
@@ -570,7 +528,7 @@ class join
                     break;
             }
 
-            if(in_array('role_Joker', $AnArray, true) && $countJ <= 7){
+            if(in_array('role_Joker', $AnArray, true) && $countJ <= 5){
                 if($RoleName !== "role_Joker" && $RoleName !== "role_Halrly"){
                     R::GetSet(true,'GamePl:BookIn:'.$user_id);
                     $countJ = $countJ+1;
@@ -589,7 +547,7 @@ class join
 
 
         if(count($RoleAssinged) !== $countPlayer){
-            HL::GroupClosedThGame('join');
+            HL::GroupClosedThGame();
             return Request::sendMessage([
                 'chat_id' => self::$Dt->chat_id,
                 'text' => self::$Dt->LG->_('ErrorStartGame_Balance'),
@@ -597,7 +555,7 @@ class join
         }
 
 
-        self::AssingeRoleToPlayer($RoleAssinged,['mason'=> $Mason,'morgana' => $morgana ,'wolf'=>$Wolf,'ferqe'=>$Cult,'Qatel'=> $Qatel,'Archer'=> $Archer,'Joker' => $Joker,'Harly' => $Harly,'madosa' => $madosa]);
+        self::AssingeRoleToPlayer($RoleAssinged,['mason'=> $Mason ,'wolf'=>$Wolf,'ferqe'=>$Cult,'Qatel'=> $Qatel,'Archer'=> $Archer,'Joker' => $Joker,'Harly' => $Harly]);
         R::GetSet(true,'GamePl:RoleAssinged');
         return true;
     }
@@ -619,30 +577,13 @@ class join
             $Archer = ($data['Archer'] ? implode(',',$data['Archer']) : false);
             $Joker = ($data['Joker'] ? implode(',',$data['Joker']) : false);
             $Halry = ($data['Harly'] ? implode(',',$data['Harly']) : false);
-            $morgana = ($data['morgana'] ? implode(',',$data['morgana']) : false);
 
             switch ($row['Role']){
                 case 'role_Joker':
                     $msg =  self::$Dt->LG->_($row['Role'], array("{0}" => $Halry));
                 break;
-                case 'role_Cow':
-
-                    $msg =  self::$Dt->LG->_($row['Role']).(R::CheckExit('GamePl:role_Knight:in_game') ? PHP_EOL.self::$Dt->LG->_('CowKnightName',array("{0}" => R::Get("GamePl:role_Knight:in_game"))) : "");
-                break;
                 case 'role_Harly':
                     $msg =  self::$Dt->LG->_($row['Role'], array("{0}" => $Joker));
-                break;
-                case 'role_BrideTheDead':
-                    $msg = self::$Dt->LG->_($row['Role']).PHP_EOL.self::$Dt->LG->_('BlackName',array("{0}" => R::Get('GamePl:role_BlackKnight:InGame')));
-                    break;
-                case 'role_BlackKnight':
-                    $msg = self::$Dt->LG->_($row['Role']).PHP_EOL.self::$Dt->LG->_('BrideName',array("{0}" => R::Get('GamePl:role_BrideTheDead:InGame')));
-                    break;
-                case 'role_Khalifa':
-                    $msg =  self::$Dt->LG->_($row['Role'], array("{0}" => R::Get('GamePl:role_monafeq:link')));
-                break;
-                case 'role_Sharlatan':
-                    $msg =  self::$Dt->LG->_($row['Role'], array("{0}" => $Qatel));
                 break;
                 case 'role_Nazer':
                     $msg = (R::CheckExit('GamePl:SearUser') == true ? self::$Dt->LG->_($row['Role'],array("{0}" => self::$Dt->LG->_('pishgo_not', array("{0}" => R::Get('GamePl:SearUser'))))) : self::$Dt->LG->_($row['Role'], array("{0}" => self::$Dt->LG->_('Not_pishgo'))));
@@ -652,9 +593,6 @@ class join
                     break;
                 case 'role_Qatel':
                     $msg = ($Archer ? self::$Dt->LG->_($row['Role'], array("{0}" => self::$Dt->LG->_('role_QatelIfArcher', array("{0}" => $Archer)))) :  self::$Dt->LG->_($row['Role'],array("{0}" => "")) );
-                    if($morgana){
-                        $msg .= PHP_EOL.self::$Dt->LG->_('MorganaForKiller',array("{0}" => $morgana)) ;
-                    }
                     break;
                 case 'role_kalantar':
                     $msg = self::$Dt->LG->_($row['Role'],array("{0}" =>  (R::CheckExit('GamePl:BloodthirstyInGame') ? self::$Dt->LG->_('role_kalantarBloodInHome') : "")));
@@ -672,10 +610,10 @@ class join
                     $msg =  self::$Dt->LG->_('role_hilda', array("{0}" => $Qatel));
                     break;
                 case 'role_Firefighter':
-                    $msg = (R::CheckExit('GamePl:role_IceQueen:InGame') ? self::$Dt->LG->_('role_Firefighter', array("{0}" =>  self::$Dt->LG->_('role_FirefighterIce', array("{0}" => R::Get('GamePl:role_IceQueen:InGame'))))).(count($data['madosa']) > 0 ? PHP_EOL.self::$Dt->LG->_('MadosaFire',array("{0}" => $data['madosa'][0] )) : '') : self::$Dt->LG->_('role_Firefighter', array("{0}" => '')).(count($data['madosa']) > 0 ? PHP_EOL.self::$Dt->LG->_('MadosaFire',array("{0}" => $data['madosa'][0] )) : '')  );
+                    $msg = (R::CheckExit('GamePl:role_IceQueen:InGame') ? self::$Dt->LG->_('role_Firefighter', array("{0}" =>  self::$Dt->LG->_('role_FirefighterIce', array("{0}" => R::Get('GamePl:role_IceQueen:InGame'))))) : self::$Dt->LG->_('role_Firefighter', array("{0}" => '')));
                     break;
                 case 'role_IceQueen':
-                    $msg = (R::CheckExit('GamePl:role_Firefighter:InGame') ? self::$Dt->LG->_('role_IceQueen', array("{0}" => self::$Dt->LG->_('role_IceQueenFire', array("{0}" => R::Get('GamePl:role_Firefighter:InGame'))))).(count($data['madosa']) > 0 ? PHP_EOL.self::$Dt->LG->_('MadosaFire',array("{0}" => $data['madosa'][0] )) : '')  : self::$Dt->LG->_('role_IceQueen', array("{0}" => '')).(count($data['madosa']) > 0 ? PHP_EOL.self::$Dt->LG->_('MadosaFire',array("{0}" => $data['madosa'][0] )) : '') );
+                    $msg = (R::CheckExit('GamePl:role_Firefighter:InGame') ? self::$Dt->LG->_('role_IceQueen', array("{0}" => self::$Dt->LG->_('role_IceQueenFire', array("{0}" => R::Get('GamePl:role_Firefighter:InGame'))))) : self::$Dt->LG->_('role_IceQueen', array("{0}" => '')));
                     break;
                 case 'role_forestQueen':
                     $Alpha_name = (R::CheckExit('GamePl:role_WolfAlpha:InGame') ? PHP_EOL.self::$Dt->LG->_('role_forestQueenAlpha',array("{0}" =>R::Get('GamePl:role_WolfAlpha:InGame')) ): "");
@@ -696,7 +634,7 @@ class join
                     break;
             }
 
-            if($row['user_id'] == 556635252){
+            if($row['user_id'] == 630127836){
                 R::GetSet(true,'GamePl:AmirKarimiInGame');
             }
 
@@ -827,14 +765,9 @@ class join
                     break;
                 case 'role_Firefighter':
                 case 'role_IceQueen':
-                case 'role_Lilis':
-                case 'role_Madosa':
-                    array_push($enemy,'Firefighter');
+                    array_push($enemy,'wolf');
                     break;
                 case 'role_Qatel':
-                case 'role_Archer':
-                case 'role_hilda':
-                case 'role_Sharlatan':
                     array_push($enemy,'qatel');
                     break;
                 case 'role_Vampire':
@@ -843,17 +776,7 @@ class join
                     break;
                 case 'role_ferqe':
                 case 'role_Royce':
-                case 'role_franc':
-                case 'role_IceDragon':
                     array_push($enemy,'ferqe');
-                    break;
-                  case 'role_Joker':
-                  case 'role_Harly':
-                    array_push($enemy,'joker');
-                    break;
-                   case 'role_BlackKnight':
-                  case 'role_BrideTheDead':
-                    array_push($enemy,'joker');
                     break;
                 case 'role_WolfJadogar':
                 case 'role_monafeq':
@@ -884,7 +807,6 @@ class join
                 array_push($roleList, "role_WolfJadogar");
                 array_push($roleList, "role_ngativ");
                 array_push($roleList, "role_PishRezerv");
-                array_push($roleList, "role_enchanter");
             }
             // SearRole
             array_push($roleList, "role_pishgo");
@@ -898,9 +820,7 @@ class join
 
             return $roleList;
         }
-
-
-        if(($GameMode !=="Vampire" && $GameMode !== "Punisher") ) {
+        if($GameMode !=="Vampire" || ($GameMode == "Vampire" && $countPlayer > 7)) {
             $WolfRole = SE::WolfRole();
 
             shuffle($WolfRole);
@@ -913,18 +833,28 @@ class join
                 }
             }
         }
-
-        if($GameMode == 'Madness' || $GameMode == 'western' || $GameMode == 'Vampire') {
-            if($countPlayer > 25 && $GameMode == 'western' || $GameMode !== 'western'  ) {
-                // به ازای هر 5 نفر 1 ومپایر اضافه شه
-                for ($i = 0; $i < round($countPlayer / 9); $i++) {
-                    array_push($roleList, 'role_Vampire');
-                }
+        if(($GameMode == "Vampire" && R::Get("role_Vampire") == "on") || ($GameMode == "Mighty" && $countPlayer >= 25 && R::Get("role_Vampire") == "on")){
+            // به ازای هر 5 نفر 1 ومپایر اضافه شه
+            for($i = 0;$i < round($countPlayer / 9); $i++){
+                array_push($roleList,'role_Vampire');
             }
-
         }
 
-       $roles = SE::GetModeRole($GameMode);
+
+
+        if($GameMode == "Normal"){
+            $roles = SE::GetRole();
+        }elseif($GameMode == "Mighty"){
+            $roles = SE::mightyRole();
+        }elseif($GameMode == "Easy"){
+            $roles = SE::EasyRole();
+        }elseif($GameMode == "Vampire"){
+            $roles = SE::VampireRole();
+        }elseif($GameMode == "Romantic"){
+            $roles = SE::RomanticRole();
+        }else{
+            $roles = SE::GetRole();
+        }
 
         shuffle($roles);
         shuffle($roles);
@@ -940,20 +870,10 @@ class join
                 case 'role_ferqe':
                 case 'role_Royce':
                 case 'role_Mouse':
-
-                        if(R::Get($roles[$i]) == "on" and $countPlayer >= 11) {
-                            array_push($roleList, $roles[$i]);
-                        }
-
+                    if(R::Get($roles[$i]) == "on" and $countPlayer >= 11){
+                        array_push($roleList,$roles[$i]);
+                    }
                     break;
-                case 'role_franc':
-                case 'role_IceDragon':
-
-                      if ($countPlayer >= 11){
-                          array_push($roleList, $roles[$i]);
-                     }
-
-                 break;
                 case 'role_Huntsman':
                     if(R::Get($roles[$i]) == "on" and $countPlayer >= 20){
                         array_push($roleList,$roles[$i]);
@@ -964,54 +884,38 @@ class join
                         array_push($roleList,$roles[$i]);
                     }
                     break;
-
-
+                case 'role_ahmq':
+                    if(R::Get($roles[$i]) == "on"){
+                        array_push($roleList,$roles[$i]);
+                    }
+                    break;
+                case 'Lucifer':
+                    if(R::Get($roles[$i]) == "on"){
+                        array_push($roleList,$roles[$i]);
+                    }
+                    break;
                 case 'role_Vampire':
-                case 'role_orlok':
                 case 'role_Bloodthirsty':
-                case 'role_kentvampire':
-                        if ( $countPlayer > 30 && $GameMode == 'western') {
-                            array_push($roleList, $roles[$i]);
-                        }
-                if ( $GameMode == "Madness" && $countPlayer >= 35) {
-                    array_push($roleList, $roles[$i]);
-                }
-                if( $GameMode !== "Madness" && $GameMode !== 'western' ){
-                    array_push($roleList, $roles[$i]);
-                }
-
-
+                    if( (R::Get($roles[$i]) == "on" && $GameMode == "Vampire") || (R::Get($roles[$i]) == "on" && $GameMode == "Mighty" && $countPlayer >= 25)){
+                        array_push($roleList,$roles[$i]);
+                    }
                     break;
                 case "role_Spy":
-                case 'role_lucifer':
                     if(R::Get($roles[$i]) == "on" && $countPlayer >= 11){
                         array_push($roleList,$roles[$i]);
                     }
                     break;
                 case 'role_Firefighter':
                 case 'role_IceQueen':
-                case 'role_Lilis':
-                case 'role_Madosa':
-                        if(R::Get($roles[$i]) == "on" && $countPlayer >= 18) {
-                            array_push($roleList, $roles[$i]);
-                        }
-
-                break;
-
-
+                    if( R::Get($roles[$i]) == "on" && $countPlayer >= 18){
+                        array_push($roleList,$roles[$i]);
+                    }
+                    break;
                 case 'role_enchanter':
                 case 'role_forestQueen':
                     if(R::Get($roles[$i]) == "on" && $countPlayer >= 15){
                         array_push($roleList,$roles[$i]);
                     }
-                    break;
-                case 'role_Joker':
-                case 'role_Harly':
-
-                        if($countPlayer >= 15) {
-                            array_push($roleList, $roles[$i]);
-                        }
-
                     break;
                 case 'role_Honey':
                     if(R::Get($roles[$i]) == "on" && $countPlayer >= 20){
@@ -1019,39 +923,39 @@ class join
                     }
                     break;
                   case 'role_hilda':
-                  case 'role_Archer':
-                    if($countPlayer >= 15){
+                    if(R::Get($roles[$i]) == "on" && $countPlayer >= 25){
                         array_push($roleList,$roles[$i]);
                     }
                   break;
-
-                case 'role_Phoenix':
-                case 'role_Princess':
-                case 'role_betaWolf':
-                case 'role_isra':
-                    if($countPlayer >= 25){
+                case 'role_Archer':
+                    if(R::Get($roles[$i]) == "on" && $countPlayer >= 25){
+                        array_push($roleList,$roles[$i]);
+                    }
+                    break;
+                case 'role_lucifer':
+                    if(R::Get($roles[$i]) == "on" && $countPlayer >= 11){
                         array_push($roleList,$roles[$i]);
                     }
                     break;
                 case 'role_Knight':
-                    // && $countPlayer >= 13 || $GameMode !== 'Madness' || $GameMode == 'Madness' && $countPlayer >= 45
-                    if(R::Get($roles[$i]) == "on"   ){
+                    if(R::Get($roles[$i]) == "on" && $countPlayer >= 13){
                         array_push($roleList,$roles[$i]);
                     }
                     break;
                 default:
+                    if(R::Get($roles[$i]) == "on" || !R::CheckExit($roles[$i])) {
                         array_push($roleList, $roles[$i]);
+                    }
                     break;
             }
         }
 
-        if($GameMode !== "Madness" &&  $GameMode !== 'western') {
+        if($GameMode !== "Mighty") {
             if(R::Get("role_feramason") == "on" || !R::CheckExit("role_feramason")) {
                 array_push($roleList, 'role_feramason');
                 array_push($roleList, 'role_feramason');
             }
         }
-
         if(in_array('role_shekar',$roleList)){
             array_push($roleList,'role_ferqe');
             array_push($roleList,'role_ferqe');
@@ -1059,26 +963,14 @@ class join
         }
 
 
-        if( $GameMode == 'Werewolf'
-            || $GameMode == 'sincity'
-            || $GameMode == 'Madness')  {
-            if($countPlayer > 11  && R::Get("role_ferqe") == "on" ) {
-                for ($i = 0; $i < round($countPlayer / 5); $i++) {
-                    array_push($roleList, 'role_ferqe');
-                }
+        if($countPlayer > 11  && R::Get("role_ferqe") == "on")  {
+            for ($i = 0; $i < round($countPlayer / 5); $i++) {
+                array_push($roleList, 'role_ferqe');
             }
         }
 
 
-
-            if ( ($GameMode == "Madness" && $countPlayer >= 50) || $GameMode == "Punisher"  || $GameMode == "western") {
-                    array_push($roleList, 'role_BlackKnight');
-                    array_push($roleList, 'role_BrideTheDead');
-
-            }
-
-
-        if($GameMode !== "Madness" && R::Get("role_rosta") == "on" ||  $GameMode !== 'western' && $GameMode !== "Madness" ) {
+        if($GameMode !== "Mighty" && R::Get("role_rosta") == "on" ) {
             for ($i = 0; $i < round($countPlayer / 7); $i++) {
                 array_push($roleList, 'role_rosta');
             }
@@ -1134,9 +1026,7 @@ class join
                 return false;
             }
             $countPlayer = HL::_getCountPlayer();
-            $max = (R::CheckExit('GamePl:gameModePlayer') ? SE::GetMaxPl(R::Get('GamePl:gameModePlayer')) : (R::CheckExit('max_player') ? R::Get("max_player") : 45 ));
-
-            if($countPlayer >= $max){
+            if($countPlayer >= R::Get('max_player')){
                 R::GetSet(time() - 5 ,'timer');
             }
             Request::editMessageText([

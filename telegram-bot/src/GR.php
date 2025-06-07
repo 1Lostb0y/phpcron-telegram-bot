@@ -466,7 +466,7 @@ class GR
         $Medl = "";
         if ($NoP->exists('userGameTime:' . self::$Dt->user_id)) {
             $GameTime = floor($NoP->get('userGameTime:' . self::$Dt->user_id) / 60);
-            $Medl = self::GetMedl($GameTime);
+            $Medl = ($GameTime >= 1000 ? "🥇" : ($GameTime >= 800 ? "🥈" : ($GameTime >= 500 ? "🥉" : "")));
         }
         $PlayerData = self::$Dt->Player;
         $GbAdmin = [630127836];
@@ -517,7 +517,7 @@ class GR
         if ($NoP->exists('userGameTime:' . $id)) {
             $GameTime = $NoP->get('userGameTime:' . $id);
             $GameTime = floor($GameTime / 60);
-            $Medl = ($GameTime >= 300  && $GameTime < 2000 ? "🥉" : ($GameTime >= 2000 && $GameTime < 4000 ? "🥈" : ($GameTime >= 4000 && $GameTime < 6000 ? "🥇" : ($GameTime >= 6000 && $GameTime < 10000 ? "🏅" : ($GameTime >= 10000 ? "🎗" : "")))));
+            $Medl = ($GameTime > 800 ? "🥇" : $GameTime > 500 ? "🥈" : $GameTime > 150 ? "🥉" : "");
         }
         $GbAdmin = [630127836];
         $Vip = (in_array($id, $GbAdmin) ? " 💎" : "");
@@ -625,17 +625,6 @@ class GR
 
         self::$Dt->collection->games_players->deleteOne(['group_id' => self::$Dt->chat_id, 'game_id' => self::$Dt->game_id, 'user_id' => self::$Dt->user_id]);
         self::UpdatePlayerList(true);
-        $Mode = RC::Get('GamePl:gameModePlayer');
-        if($Mode === 'coin'){
-            GR::UpdateCoin(((int) self::$Dt->Player['coin'] + 5000), self::$Dt->user_id);
-            Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => self::$Dt->L->_('BackSendCoinFlee'),
-                'disable_web_page_preview' => 'true',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
     }
 
     public static function SaveGameActivity($d,$actvity,$to){
@@ -697,12 +686,6 @@ class GR
                             $re[] = $array[$Key];
                         }
                         break;
-                    case 'ferqeTeem':
-                        if($row['user_role'] == "role_IceDragon"){
-                            continue 2;
-                        }
-                        $re[] = $array[$Key];
-                    break;
                     default:
                         $re[] = $array[$Key];
                         break;
@@ -849,19 +832,19 @@ class GR
             $GameTime = 0;
             if ($NoP->exists('userGameTime:' . $user_id)) {
                 $GameTime = floor($NoP->get('userGameTime:' . $user_id) / 60);
-                $Medl = ($GameTime >= 300  && $GameTime < 2000 ? "🥉" : ($GameTime >= 2000 && $GameTime < 4000 ? "🥈" : ($GameTime >= 4000 && $GameTime < 6000 ? "🥇" : ($GameTime >= 6000 && $GameTime < 10000 ? "🏅" : ($GameTime >= 10000 ? "🎗" : "")))));
+                $Medl = ($GameTime >= 1000 ? "🥇" : ($GameTime >= 800 ? "🥈" : ($GameTime >= 500 ? "🥉" : "")));
             }
 
 
             $UseRLeve = (is_numeric($array['Site_Username']) ? $array['Site_Username'] : 1);
 
-            $KillYou = self::GetYouKill($user_id,1);
+            $KillYou = self::GetYouKill($user_id);
 
             $KillsName = ($KillYou ? self::_GetPlayerName($KillYou['0']['_id']) : $array['fullname']);
             $KillsCount = ($KillYou ? $KillYou['0']['count'] : 0);
 
 
-            $KillMe = self::GetKillLastId($user_id,1);
+            $KillMe = self::GetKillLastId($user_id);
             $KillmeName = ($KillMe ? self::_GetPlayerName($KillMe['0']['_id']) : $array['fullname']);
             $KillMeCount = ($KillMe ? $KillMe['0']['count'] : 0);
 
@@ -1022,7 +1005,7 @@ class GR
         if ($result) {
             $array = iterator_to_array($result);
 
-            $data = self::GetYouKill($user_id, 10);
+            $data = self::KillMe($user_id, 5);
             if ($data) {
                 $Re = [];
                 foreach ($data as $key => $row) {
@@ -1049,7 +1032,7 @@ class GR
         if ($result) {
             $array = iterator_to_array($result);
 
-            $data = self::GetKillLastId($user_id, 10);
+            $data = self::Kills($user_id, 5);
             if ($data) {
                 $Re = [];
                 foreach ($data as $key => $row) {
@@ -1073,24 +1056,6 @@ class GR
 
     public static function UserSmiteInGame($user_id)
     {
-        $Mode = RC::Get('GamePl:gameModePlayer');
-        if($Mode === 'coin') {
-            $Player = self::FindUserId($user_id);
-            $game = self::_GetPlayer($user_id);
-            if($game) {
-                if ($game['user_state'] == 1) {
-                    self::UpdateCoin(((int)$Player['coin'] + 5000), $user_id);
-                    Request::sendMessage([
-                        'chat_id' => $user_id,
-                        'text' => self::$Dt->L->_('BackSendCoinSmite'),
-                        'disable_web_page_preview' => 'true',
-                        'parse_mode' => 'HTML'
-                    ]);
-                }
-            }
-
-        }
-
         self::$Dt->collection->join_user->updateOne(array("chat_id"=>self::$Dt->chat_id),array('$pull' => array("users" => ['user_id' => $user_id])));
         self::$Dt->collection->games_players->deleteOne(['group_id' => self::$Dt->chat_id, 'game_id' => self::$Dt->game_id, 'user_id' => (float)$user_id]);
         self::UpdatePlayerList(true);
@@ -1124,30 +1089,7 @@ class GR
 
     public static function CheckUserById($user_id)
     {
-        $result = self::$Dt->collection->Players->findOne([ 'user_id' => (float) $user_id]);
-        if ($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-
-        return false;
-    }
-
-
-    public static function CheckDaPlayer($user_id)
-    {
-        $result = self::$Dt->collection->dastate->findOne([ 'user_id' => $user_id]);
-        if ($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-
-        return false;
-    }
-
-    public static function CheckHeroPlayer($user_id)
-    {
-        $result = self::$Dt->collection->hero->findOne([ 'user_id' => $user_id]);
+        $result = self::$Dt->collection->Players->findOne([ 'user_id' => $user_id]);
         if ($result) {
             $array = iterator_to_array($result);
             return $array;
@@ -1193,9 +1135,7 @@ class GR
 
     public static function CheckPlayerInBanList($user_id)
     {
-        $result = self::$Dt->collection->ban_list->findOne(['user_id' => (float)$user_id],[
-            'sort' => ['_id' => -1],
-        ]);
+        $result = self::$Dt->collection->ban_list->findOne(['user_id' => (float)$user_id]);
         if ($result) {
             $array = iterator_to_array($result);
             if ($array['ban_antilto'] == 1) {
@@ -1217,13 +1157,13 @@ class GR
         $cn = self::$Dt->collection->ban_list;
         $cn->insertOne([
             'group_id' => self::$Dt->chat_id,
-            'user_id' => (float) $user_id,
+            'user_id' => $user_id,
             'by' => self::$Dt->user_id,
-            'textData' => (self::$Dt->Replay ? self::$Dt->Replay->getText() : "Global"),
+            'textData' => (isset(self::$Dt->Replay) ? self::$Dt->Replay->getText() : "Global"),
             'by_name' => self::$Dt->user_link,
             'ban_for' => self::$Dt->text ?? null,
-            'fullname' => (self::$Dt->Replay ? self::$Dt->ReplayFullname : "Global"),
-            'link' => (self::$Dt->Replay ?  self::$Dt->PlayerLink : "global"),
+            'fullname' => (isset(self::$Dt->Replay) ? self::$Dt->ReplayFullname : "Global"),
+            'link' => (isset(self::$Dt->Replay) ?  self::$Dt->PlayerLink : "global"),
             'ban_antilto' => 0,
             'ban_warn' => 0,
             'time' => time(),
@@ -1253,13 +1193,6 @@ class GR
         self::$Dt->collection->ban_list->updateOne(
             ['user_id' => (float)$user_id],
             ['$set' => ['ban_antilto' => $time]]
-        );
-    }
-    public static function ChangeEmoji($emoji, $user_id)
-    {
-        self::$Dt->collection->Players->updateOne(
-            ['user_id' => (float)$user_id],
-            ['$set' => ['ActivePhone' => $emoji]]
         );
     }
 
@@ -1323,7 +1256,6 @@ class GR
             'onwer_id' => self::$Dt->user_id,
             'ban_player' => 0,
             'view_banlist' => 0,
-            'ban_all' => 0,
             'ban_1_y' => 0,
             'ban_1_a' => 0,
             'ban_1_m' => 0,
@@ -1383,7 +1315,7 @@ class GR
 
         $KeyBoard = "";
 
-        $inline_keyboard = new InlineKeyboard(
+        $inline_keyboard = new InlineKeyboardInlineKeyboard(
             [['text' => "گذشت از بن" . ($adminDetial['remove_ban'] == 0 ? "🔒" : ""), 'callback_data' => ($adminDetial['remove_ban'] == 1 ? "BanPlayer_No/" . self::$Dt->chat_id . "/" . $user_id : "locked")], ['text' => "حذف از لیست بن" . ($adminDetial['remove_ban'] == 0 ? "🔒" : ""), 'callback_data' => ($adminDetial['remove_ban'] == 1 ? "BanPlayer_remove/" . self::$Dt->chat_id . "/" . $user_id : "locked")]],
             [['text' => "بن برای 30 دقیقه", 'callback_data' => "BanPlayer_30min/" . self::$Dt->chat_id . "/" . $user_id], ['text' => "بن برای 1 روز" . ($adminDetial['ban_1_a'] == 0 ? "🔒" : ""), 'callback_data' => ($adminDetial['ban_1_a'] == 1 ? "BanPlayer_1d/" . self::$Dt->chat_id . "/" . $user_id : "locked")]],
             [['text' => "بن برای یک هفته" . ($adminDetial['ban_1_w'] == 0 ? "🔒" : ""), 'callback_data' => ($adminDetial['ban_1_w'] == 1 ? "BanPlayer_1w/" . self::$Dt->chat_id . "/" . $user_id : "locked")], ['text' => "بن برای 1 ماه" . ($adminDetial['ban_1_m'] == 0 ? "🔒" : ""), 'callback_data' => ($adminDetial['ban_1_m'] == 1 ? "BanPlayer_1m/" . self::$Dt->chat_id . "/" . $user_id : "locked")]],
@@ -1419,8 +1351,8 @@ class GR
             }
             $re_group = [];
             $re = [];
-            foreach ($Group as $rows) {
-                foreach ($rows as $key => $row) {
+            foreach ($Group as $row) {
+                foreach ($row as $key => $row) {
                     if (!in_array($key, $re_group)) {
                         array_push($re_group, $key);
                         array_push($re, "<strong>" . self::$Dt->L->_('Ach_' . $key, count($Group), 0) . "</strong>");
@@ -1633,11 +1565,17 @@ class GR
 
     public static function GetUptime()
     {
-        $data = shell_exec('uptime');
-        $uptime = explode(' up ', $data);
-        $uptime = explode(',', $uptime[1]);
-        $uptime = $uptime[0].', '.$uptime[1];
-        return $uptime;
+        $str = @file_get_contents('/proc/uptime');
+        $num = floatval($str);
+        $secs = fmod($num, 60);
+        $num = intdiv($num, 60);
+        $mins = $num % 60;
+        $num = intdiv($num, 60);
+        $hours = $num % 24;
+        $num = intdiv($num, 24);
+        $days = $num;
+
+        return "$days:$hours:$mins.$secs";
     }
 
     public static function get_tgame()
@@ -1749,38 +1687,11 @@ class GR
         }
         RC::Del('EditMarkup');
     }
-    public static function FindUserId($id){
-        $result = self::$Dt->collection->Players->findOne(['user_id' => (float) $id]);
-        if ($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-        return false;
-    }
+
     public static function KillGame()
     {
         RC::GetSet(true, 'GamePl:GameIsEnd');
         RC::Del('game_state');
-        $Mode = RC::Get('GamePl:gameModePlayer');
-        if($Mode === 'coin'){
-            $players  = self::$Dt->collection->games_players->find(['group_id' => self::$Dt->chat_id, 'game_id' => self::$Dt->game_id]);
-            if($players) {
-                $array = iterator_to_array($players);
-                foreach($array as $row) {
-                    if ($row['user_state'] == 1) {
-                        $Player = self::FindUserId($row['user_id']);
-                        self::UpdateCoin(((int)$Player['coin'] + 5000), $row['user_id']);
-                        Request::sendMessage([
-                            'chat_id' => $row['user_id'],
-                            'text' => self::$Dt->L->_('BackSendCoinKill'),
-                            'disable_web_page_preview' => 'true',
-                            'parse_mode' => 'HTML'
-                        ]);
-                    }
-                }
-            }
-        }
-
         self::$Dt->collection->games_players->deleteMany(['group_id' => self::$Dt->chat_id, 'game_id' => self::$Dt->game_id]);
         self::$Dt->collection->games->deleteOne(['group_id' => self::$Dt->chat_id, 'game_id' => self::$Dt->game_id]);
         self::$Dt->collection->join_user->deleteOne(['chat_id' => self::$Dt->chat_id]);
@@ -1980,21 +1891,10 @@ class GR
 
         $CountCult = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'cult']);
 
-        $CountCow = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Cow']);
-        $CountMadosa = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Madosa']);
-        $CountMargita = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Margita']);
-        $CountBlack = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Black']);
-        $CountBrideTheDead = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'BrideTheDead']);
-        $CountChemist_SK = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Chemist_SK']);
-        $CountFranc = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Franc']);
-        $CountSharlatan = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'Sharlatan']);
-        $Countlilis = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'lilis']);
-
-
 
         $CountLoveDead = self::$Dt->collection->game_activity->count(['player_id'=>$user_id,'actvity'=> 'love_dead']);
 
-        $TotalAl = $CountLync + $CountKiller + $CountEat + $CountFlee + $CountAfked + $CountShot + $CountVampire + $CountKnight +  $Countarcher + $CountHunts + $CountLoveDead + $CountFire + $CountIce +$CountCult+$CountMadosa +  $CountMargita +    $CountBlack +  $CountBrideTheDead +   $CountChemist_SK +  $CountFranc + $CountSharlatan + $Countlilis;
+        $TotalAl = $CountLync + $CountKiller + $CountEat + $CountFlee + $CountAfked + $CountShot + $CountVampire + $CountKnight +  $Countarcher + $CountHunts + $CountLoveDead + $CountFire + $CountIce +$CountCult ;
 
         $Return = self::$Dt->L->_('DeathList',array("{0}" => self::$Dt->user_link)).PHP_EOL;
 
@@ -2045,41 +1945,6 @@ class GR
         $T_Cult = ($CountCult > 0 ? floor($CountCult * 100 / $TotalAl) : 0);
         $Return .= "<code> {$CountCult} ({$T_Cult}%) </code> ".self::$Dt->L->_('CultKill').PHP_EOL;
 
-        $T_Cow = ($CountCow > 0 ? floor($CountCow * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountCow} ({$T_Cow}%) </code> ".self::$Dt->L->_('CowKill').PHP_EOL;
-
-        $T_Madosa = ($CountMadosa > 0 ? floor($CountMadosa * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountMadosa} ({$T_Madosa}%) </code> ".self::$Dt->L->_('MadosaKill').PHP_EOL;
-    
-        $T_Margita = ($CountMargita > 0 ? floor($CountMargita * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountMargita} ({$T_Margita}%) </code> ".self::$Dt->L->_('MargitaKill').PHP_EOL;
-
-        $T_Black = ($CountBlack  > 0 ? floor($CountBlack  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountBlack } ({$T_Black}%) </code> ".self::$Dt->L->_('BlackKill').PHP_EOL;
-
-        $T_BrideTheDead  = ($CountBrideTheDead  > 0 ? floor($CountBrideTheDead  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountBrideTheDead } ({$T_BrideTheDead}%) </code> ".self::$Dt->L->_('BrideTheDeadKill').PHP_EOL;
-
-
-        $T_Chemist_SK  = ($CountChemist_SK  > 0 ? floor($CountChemist_SK  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountChemist_SK } ({$T_Chemist_SK}%) </code> ".self::$Dt->L->_('Chemist_SKKill').PHP_EOL;
-
-
-        $T_Franc = ($CountFranc  > 0 ? floor($CountFranc  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountFranc } ({$T_Franc}%) </code> ".self::$Dt->L->_('FrancKill').PHP_EOL;
-
-
-        $T_Sharlatan = ($CountSharlatan  > 0 ? floor($CountSharlatan  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$CountSharlatan } ({$T_Sharlatan}%) </code> ".self::$Dt->L->_('SharlatanKill').PHP_EOL;
-
-        $T_lilis = ($Countlilis  > 0 ? floor($Countlilis  * 100 / $TotalAl) : 0);
-        $Return .= "<code> {$Countlilis } ({$T_lilis}%) </code> ".self::$Dt->L->_('lilisKill').PHP_EOL;
-
-
-
-
-
-
 
         $NoP->set('UserDeath:'.$user_id,$Return);
         $NoP->expire('UserDeath:'.$user_id,300);
@@ -2088,16 +1953,16 @@ class GR
     }
 
 
-    public static function GetKillLastId($user_id = false,$limit = 5){
+    public static function GetKillLastId($user_id = false){
 
         if(!$user_id){
             $user_id = self::$Dt->user_id;
         }
         $ops = [
-            ['$match' => ['player_id' => $user_id,'actvity'=>array('$in' => array('kill','eat','huns','shot','archer','knight','cult','fire','ice','vote_kill','Cow','Madosa','Sharlatan','Margita','lilis','love_dead','Black','vampire','Franc','cult','Chemist_SK','BrideTheDead')) ]],
+            ['$match' => ['player_id' => $user_id,'actvity'=>array('$in' => array('kill','eat','huns','shot','archer','knight','cult','fire','ice','vote_kill')) ]],
             ['$group' => ['_id' => '$to', 'count' => ['$sum' => 1]]],
             ['$sort' => ['count' => -1]],
-            ['$limit' => $limit],
+            ['$limit' => 3],
         ];
 
         $result = self::$Dt->collection->game_activity->aggregate($ops);
@@ -2110,16 +1975,16 @@ class GR
     }
 
 
-    public static function GetYouKill($user_id = false,$limit = 5){
+    public static function GetYouKill($user_id = false){
         if(!$user_id){
             $user_id = self::$Dt->user_id;
         }
 
         $ops = [
-            ['$match' => ['to' =>$user_id,'actvity'=>array('$in' => array('kill','eat','huns','shot','archer','knight','cult','fire','ice','vote_kill','Cow','Madosa','Sharlatan','Margita','lilis','love_dead','Black','vampire','Franc','cult','Chemist_SK','BrideTheDead')) ]],
+            ['$match' => ['to' =>$user_id,'actvity'=>array('$in' => array('kill','eat','huns','shot','archer','knight','cult','fire','ice','vote_kill')) ]],
             ['$group' => ['_id' => '$player_id', 'count' => ['$sum' => 1]]],
             ['$sort' => ['count' => -1]],
-            ['$limit' => $limit],
+            ['$limit' => 3],
         ];
 
         $result = self::$Dt->collection->game_activity->aggregate($ops);
@@ -2137,7 +2002,7 @@ class GR
             ['$match' => ['player_id' => (string) self::$Dt->user_id,'actvity'=> array('$in' => array('love')) ]],
             ['$group' => ['_id' => '$to', 'count' => ['$sum' => 1]]],
             ['$sort' => ['count' => -1]],
-            ['$limit' => 5],
+            ['$limit' => 3],
         ];
 
         $result = self::$Dt->collection->game_activity->aggregate($ops);
@@ -2157,7 +2022,7 @@ class GR
             ['$match' => ['player_id.user_id' =>  array('$nin' => array(self::$Dt->user_id)) ]],
             ['$group'  => ['_id' => '$player_id.user_id', 'count' => ['$sum' => 1]] ],
             ['$sort' => ['count' => -1]],
-            ['$limit' => 5],
+            ['$limit' => 3],
         ];
 
         $result = self::$Dt->collection->group_states->aggregate($ops);
@@ -2302,9 +2167,6 @@ class GR
         return 0;
     }
 
-  
-
-
 
     public static function MinCreditCredit($New){
         $cns = self::$Dt->collection->Players;
@@ -2428,8 +2290,7 @@ class GR
             $UserTop = self::$Dt->L->_('level_'.$UserLevel);
             $UserTopForward = self::$Dt->L->_('level_'.$IPlevel);
 
-            $Array = array("{0}" => number_format($UserXp) ,"{1}" => number_format($LeveLLeft) ,"{2}" => $UserLevel , "{3}" =>$UserTop , "{4}" => $UserTopForward );
-            $Lang = self::$Dt->L->_('MyLeveLCommend',$Array);
+            $Lang = self::$Dt->L->_('MyLeveLCommend',number_format($UserXp),number_format($LeveLLeft),$UserLevel,$UserTop,$UserTopForward);
 
             return $Lang;
         }
@@ -2555,232 +2416,5 @@ class GR
             'status' => 1,
         ]);
     }
-
-    public static function GetDAState($user_id){
-
-       $Player =   self::CheckUserById($user_id);
-
-       if(!$Player) return ['lang' => false];
-
-       $Name = self::ConvertName($Player['user_id'],$Player['fullname']);
-
-       $GetDaState = self::CheckDaPlayer($user_id);
-
-       $da = [
-           'Dp' => 0
-           ,'DuelsWon' => 0
-           ,'Duelslost' => 0
-           ,'BlackRose' => 0
-           ,'TotalDuels' => 0
-           ,'Level' =>  0
-           ,'AlliancePoints' => 0
-           ,'AllianceCapacity' => 0
-           ,'Warswon' => 0
-           ,'Warslost' => 0
-           ,'TotalWars' => 0
-           ,'BossesDefeated' => 0
-           ,'BestDefeatedBoss' => 0
-           ,'avatar' => false
-           ,'avatar_type' => false
-           ,'image' => 'https://www.linkpicture.com/q/photo5906694610829292619-1_2.jpg'
-       ];
-       if($GetDaState){
-           $da = $GetDaState;
-       }
-       $Lang = self::$Dt->L->_('DaState',array(
-           "{0}" => $Name,
-           "{1}" => number_format($Player['coin']),
-           "{2}" => $da['Dp'],
-           "{3}" => $da['DuelsWon'],
-           "{4}" => $da['Duelslost'],
-           "{5}" => $da['TotalDuels'],
-           "{6}" => $da['Level'],
-           "{7}" => $da['AlliancePoints'],
-           "{8}" => $da['AllianceCapacity'],
-           "{9}" => $da['Warswon'],
-           "{10}" => $da['Warslost'],
-           "{11}" => $da['TotalWars'],
-           "{12}" => $da['BossesDefeated'],
-           "{13}" => $da['BestDefeatedBoss'],
-           "{14}" => $da['BlackRose'],
-       ));
-
-       return ['lang' => $Lang ,'da' => $da];
-    }
-
-    public static function GetHero($user_id){
-
-        $Player =   self::CheckUserById($user_id);
-
-        if(!$Player) return false;
-
-        $HeroState = self::CheckHeroPlayer($user_id);
-        $Name = self::ConvertName($Player['user_id'],$Player['fullname']);
-
-        $da = [
-            'Name' => 0
-            ,'Race' => 0
-            ,'Emoji' => 0
-            ,'Level' => 0
-            ,'Classe' =>  0
-            ,'Chest' => 0
-            ,'Head' => 0
-            ,'Weapon' => 0
-            ,'Accessories' => 0
-            ,'Power' => 0
-            ,'Spell' => 0
-            ,'Damage' => 0
-            ,'Armor' => 0
-            ,'HP' => 0
-            ,'Legendary' => 0
-            ,'Crit' => 0
-            ,'Speed' => 0
-            ,'Hit' => 0
-            ,'image'=>  'https://www.linkpicture.com/q/photo-1487260211189-670c54da558d.jfif'
-        ];
-        if($HeroState){
-            $da = $HeroState;
-        }
-
-        $Lang = self::$Dt->L->_('GetHero',array(
-            "{14}" => $Name,
-            "{0}" => $da['Name'],
-            "{1}" => $da['Race'],
-            "{2}" => $da['Emoji'],
-            "{3}" => $da['Level'],
-            "{4}" => $da['Classe'],
-            "{5}" => $da['Chest'],
-            "{6}" => $da['Head'],
-            "{7}" => $da['Weapon'],
-            "{8}" => $da['Accessories'],
-            "{9}" => $da['Power'],
-            "{10}" => $da['Spell'],
-            "{11}" => $da['Damage'],
-            "{12}" => $da['Armor'],
-            "{13}" => $da['HP'],
-            "{15}" => (isset($da['Legendary']) ? $da['Legendary'] : 0),
-            "{16}" => (isset($da['Crit']) ? $da['Crit'] : 0),
-            "{17}" => (isset($da['Speed']) ? $da['Speed'] : 0),
-            "{18}" => (isset($da['Hit']) ? $da['Hit'] : 0),
-
-        ));
-
-        return ['text' => $Lang ,'image' => $da['image']];
-    }
-
-    public static function UpdateCoin($coin,$user_id){
-        self::$Dt->collection->Players->updateOne(
-            ['user_id' => (float)$user_id],
-            ['$set' => ['coin' => $coin]]
-        );
-    }
-    public static function UpdateBlood($coin,$user_id){
-        self::$Dt->collection->dastate->updateOne(
-            ['user_id' => (float)$user_id],
-            ['$set' => ['Duelslost' => $coin]]
-        );
-    }
-
-    public static  function UpdateUserPhoto($path,$type,$user_id){
-        self::$Dt->collection->dastate->updateOne(array("user_id"=>(float) $user_id),  ['$set' => ['avatar' => $path,'avatar_type' => $type]] );
-
-        return true;
-    }
-
-
-    public static function checkLastByRole($user_id,$role){
-        $result = self::$Dt->collection->buy_role->findOne(['user_id' => (float) $user_id,'role' => $role]);
-
-        if($result) {
-            return true;
-        }
-        return false;
-    }
-    public static function FindePlayerRoleBuy($role,$user_id){
-        $Data = self::GetRoleBuy();
-        if(!$Data){
-            return false;
-        }
-        $Find = false;
-        foreach ($Data as $row){
-            if($row['_id'] == $role){
-
-                if(in_array($user_id,$row['users'])){
-                    $Find = true;
-                    break;
-                }
-            }
-        }
-
-        return $Find;
-
-    }
-
-    public static function GetRoleBuy($user_id){
-        $result = self::$Dt->collection->buy_role->find(['user_id' => (float) $user_id]);
-        if ($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-        return false;
-    }
-
-    public static function UpdateSettingRole($role){
-        $result = self::$Dt->collection->buy_role->findOne(['user_id' => self::$Dt->user_id,'role' => $role]);
-
-        if($result) {
-            $array = iterator_to_array($result);
-            $Active = ($array['active'] ? false : true);
-            self::$Dt->collection->buy_role->updateOne(array("user_id" => self::$Dt->user_id, 'role' => $role), ['$set' => ['active' => $Active]]);
-            return true;
-        }
-
-        return false;
-    }
-
-    public static function ByRole($user_id,$role){
-        self::$Dt->collection->buy_role->insertOne([
-            'user_id' => $user_id,
-            'role' => $role,
-            'time' => jdate('Y-m-d H:i:s'),
-            'active' => true,
-        ]);
-    }
-
-    public static function getKillTopList($start,$end){
-        $ops = [
-            ['$match' => ['m_date' => array('$gt' => $start, '$lte' => $end),'actvity'=>array('$in' => array('kill','eat','huns','shot','archer','knight','cult','fire','ice','vote_kill')) ]],
-            ['$group' => ['_id' => '$player_id', 'count' => ['$sum' => 1]]],
-            ['$sort' => ['count' => -1]],
-            ['$limit' => 10],
-        ];
-        $result = self::$Dt->collection->game_activity->aggregate($ops);
-        if ($result) {
-            $array = iterator_to_array($result);
-
-            return $array;
-        }
-
-        return false;
-    }
-
-
-    public static function ConvertListData($Array){
-        $End = [];
-        foreach ($Array as $row){
-            $Player = self::CheckUserById($row['_id']);
-
-            $Data = "<strong>";
-            $Data .= $Player['fullname'];
-            $Data .= "              (".$row['count'].") 🩸";
-            $Data .= "</strong>".PHP_EOL;
-            $End[] = $Data;
-        }
-
-
-        return implode(PHP_EOL,$End);
-    }
-
-    
 }
 

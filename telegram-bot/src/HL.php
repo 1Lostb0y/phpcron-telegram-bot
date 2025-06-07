@@ -57,78 +57,12 @@ class HL
         }
         return 0;
     }
-    public static function UpdateCoin($Coin,$user_id){
-        self::$Dt->collection->Players->updateOne(array("user_id"=>(float) $user_id),  ['$set' => ['coin' => (float) $Coin]] );
-
-        return true;
-    }
-    public static function FindePlayerRoleBuy($role,$user_id){
-        $Data = self::GetRoleBuy();
-        if(!$Data){
-            return false;
-        }
-        $Find = false;
-        foreach ($Data as $row){
-            if($row['_id'] == $role){
-
-                if(in_array($user_id,$row['users'])){
-                    $Find = true;
-                    break;
-                }
-            }
-        }
-
-        return $Find;
-
-    }
-    public static function GetRoleBuy(){
-        if(R::CheckExit('GamePl:BuyRole')){
-            $Data = json_decode(R::Get('GamePl:BuyRole'),true);
-            return $Data;
-        }
-        $ops = [
-            ['$match' => ['active' => true]],
-            ['$group' => [
-                '_id' => '$role'
-                ,'count' => ['$sum' => 1]
-                ,"users" => ['$addToSet' => '$user_id']
-            ]],
-
-        ];
-        $result = self::$Dt->collection->buy_role->aggregate($ops);
-        if ($result) {
-            $array = iterator_to_array($result);
-            R::GetSet($array,'GamePl:BuyRole','json');
-            return json_decode(json_encode($array),true);
-        }
-
-        return false;
-    }
     public static function _getCountPlayers(){
 
         $result = self::$Dt->collection->games_players->count(['group_id'=> self::$Dt->chat_id,'game_id'=> self::$Dt->game_id]);
         return $result;
     }
-    public static function GroupClosedThGame($type = false){
-        if($type == 'join'){
-            $GameMode = R::Get('GamePl:gameModePlayer');
-            if($GameMode == 'coin') {
-                $players = self::_getPlayers();
-                foreach ($players as $row) {
-                    $Player = self::FindUserId($row['user_id']);
-                    if ($row['user_state'] == 1) {
-                        self::UpdateCoin(((int)$Player['coin'] + 5000), $row['user_id']);
-                        Request::sendMessage([
-                            'chat_id' => $row['user_id'],
-                            'text' => self::$Dt->L->_('BackSendCoinEndGame'),
-                            'disable_web_page_preview' => 'true',
-                            'parse_mode' => 'HTML'
-                        ]);
-                    }
-                }
-            }
-        }
-
+    public static function GroupClosedThGame(){
 
         R::GetSet(true,'GamePl:GameIsEnd');
         R::Del('game_state');
@@ -161,13 +95,13 @@ class HL
     public static function _getName($fullname,$id){
         return self::ConvertName($id,$fullname);
     }
-    public static function _getPlayerList($markDown = false){
+    public static function _getPlayerList(){
         $d = self::_getPlayers();
         $re = [];
 
         foreach ($d as $row){
-            $name  = ($row['user_state'] == 0 || $row['user_state'] == 2 ) ? "*".$row['fullname_game']."*: " : self::ConvertName($row['user_id'],$row['fullname_game'],true)." :";
-            $UserRole = ($row['user_state'] == 0 || $row['user_state'] == 2 and R::Get('expose_role_after_dead') == "onr") ?  "*".self::$Dt->LG->_($row['user_role']."_n")."*" ."-" : '';
+            $name  = ($row['user_state'] == 0 || $row['user_state'] == 2 ) ? "<strong>".$row['fullname_game'].":</strong> " : self::_getName($row['fullname_game'],$row['user_id'])." :";
+            $UserRole = ($row['user_state'] == 0 || $row['user_state'] == 2 and R::Get('expose_role_after_dead') == "onr") ?  "<strong>".self::$Dt->LG->_($row['user_role']."_n")."</strong>" ."-" : '';
             $state = ($row['user_state'] == 0 ? self::$Dt->LG->_('is_dead') : ($row['user_state'] == 2 ?  self::$Dt->LG->_('is_smited') :  self::$Dt->LG->_('is_on')));
             $love  = ($row['user_state'] !== 1 ? R::CheckExit('GamePl:love:'.$row['user_id']) ? "- ❤️" : "" : "");
             $Vip   = "";
@@ -183,26 +117,21 @@ class HL
         return $PlayerList;
     }
 
-    public static function ConvertName($user_id,$name,$markDown = false){
+    public static function ConvertName($user_id,$name){
 
         if(is_array($user_id) || is_array($name)){
-            return "[Error](tg://user?id=556635252)";
-        }
-        if($markDown){
-            $nameClear = str_replace(['_','*','`','['],' ',$name);
-            return "[{$nameClear}](tg://user?id={$user_id})";
+            return "Give Array";
         }
         return '<a href="tg://user?id='.$user_id.'">'.$name.'</a>';
 
     }
 
     public static function SendPlayerList(){
-        $list = self::_getPlayerList(true);
-
+        $list = self::_getPlayerList();
         $re = Request::sendMessage([
             'chat_id' => self::$Dt->chat_id,
             'text' => $list,
-            'parse_mode'=> 'Markdown'
+            'parse_mode'=> 'HTML'
         ]);
         if($re->isOk()) {
             R::GetSet($re->getResult()->getMessageId(), 'Player_ListMessage_ID');
@@ -226,9 +155,6 @@ class HL
                 break;
             case 'vote':
                 if(R::CheckExit('GamePl:role_Solh:GroupInSolh')){
-                    return false;
-                }
-                if(R::CheckExit('GamePl:SharlatanINTabar')){
                     return false;
                 }
 
@@ -269,9 +195,6 @@ class HL
 
                 if(R::CheckExit('GamePl:role_Solh:GroupInSolh')){
                     $timer = 0;
-                } 
-                if(R::CheckExit('GamePl:SharlatanINTabar')){
-                    $timer = 0;
                 }
                 break;
         }
@@ -300,12 +223,13 @@ class HL
 
     }
 
-    public static function GetSliceMessage($Messages , $AllowLen = 300){
+    public static function GetSliceMessage($Messages){
         // تغییر ترتیب از اخر به اول
 
         $implo = []; // آرایه داده های ترتیب داده شده
         $SingleSend = []; // آرایه داده های تکی
         $implo_len = 0; // تعداد کاراکتر های ارایه ترتیبی
+        $AllowLen = 300; // حدمجاز برای افزودن به ارایه ترتیب داده شده
         foreach ( $Messages as $val) {
             if($implo_len <= $AllowLen) {
                 array_push($implo, $val);
@@ -318,11 +242,11 @@ class HL
 
         return ['single'=> $SingleSend ,'Implode'=> $implo];
     }
-    public static function SendGroupMessage($sendList = false,$Allowlen = 300){
+    public static function SendGroupMessage($sendList = false){
         $Messages = R::LRange(0,-1,'GamePl:group_message');
         $reversed = array_reverse($Messages);
         if($reversed){
-            $Get = self::GetSliceMessage($reversed,$Allowlen);
+            $Get = self::GetSliceMessage($reversed);
 
             $SingleSend = $Get['single'];
             $implo = $Get['Implode'];
@@ -354,18 +278,22 @@ class HL
         }
 
         if($sendList == true && R::CheckExit('GamePl:Kill') == true) {
-            $list = self::_getPlayerList(true);
+            $list = self::_getPlayerList();
             $re = Request::sendMessage([
                 'chat_id' => self::$Dt->chat_id,
                 'text' => $list,
-                'parse_mode' => 'Markdown'
+                'parse_mode' => 'HTML'
             ]);
             if ($re->isOk()) {
                 R::GetSet($re->getResult()->getMessageId(), 'Player_ListMessage_ID');
             }
-            (R::CheckExit('GamePl:Kill') == true && R::CheckExit('GamePl:HunterKill') == false && R::CheckExit('GamePl:WolfCubeDead') == false && R::CheckExit('GamePl:RoyceDead') == false ? R::Del('GamePl:Kill') : "");
         }
-     }
+
+
+        (R::CheckExit('GamePl:Kill') == true && R::CheckExit('GamePl:HunterKill') == false && R::CheckExit('GamePl:WolfCubeDead') == false && R::CheckExit('GamePl:RoyceDead') == false  ? R::Del('GamePl:Kill'): "");
+
+
+    }
 
 
     public static function PlayerByTeam($Player = false){
@@ -377,7 +305,6 @@ class HL
         $FerqeTeam = [];
         $Fermason = [];
         $vampire = [];
-        $Black = [];
         $Qatel = [];
         foreach ($Player as $row){
             switch ($row['user_role']){
@@ -386,10 +313,6 @@ class HL
                         continue 2;
                     }
                     array_push($WolfTeam,['user_id'=> $row['user_id'],'Link'=> self::_getName($row['fullname_game'],$row['user_id']),'role'=> $row['user_role'] ]);
-                    break;
-                case 'role_BlackKnight':
-                case 'role_BrideTheDead':
-                    $Black[] = ['user_id' => $row['user_id'], 'Link' => self::_getName($row['fullname_game'], $row['user_id']), 'role' => $row['user_role']];
                     break;
                 case 'role_WolfTolle':
                 case 'role_WolfGorgine':
@@ -420,13 +343,12 @@ class HL
                     break;
                 case 'role_Qatel':
                 case 'role_Archer':
-                 case 'role_Sharlatan':
                     array_push($Qatel,['user_id'=> $row['user_id'],'Link'=> self::_getName($row['fullname_game'],$row['user_id']) ,'role'=> $row['user_role'] ]);
                     break;
             }
         }
 
-        return ['wolf'=> $WolfTeam,'black' => $Black , 'ferqe'=> $FerqeTeam,'Fermason'=> $Fermason,'vampire' => $vampire,'Qatel'=>$Qatel];
+        return ['wolf'=> $WolfTeam , 'ferqe'=> $FerqeTeam,'Fermason'=> $Fermason,'vampire' => $vampire,'Qatel'=>$Qatel];
 
     }
 
@@ -435,11 +357,6 @@ class HL
         $player = self::_getOnPlayers();
         $re = [];
         foreach($player as  $row){
-            $UserRole = $row['user_role'];
-            if($UserRole == "role_BrideTheDead"){
-                continue;
-            }
-            
             if($in_list == false) {
                 if (!in_array($row['user_id'], $d)) {
                     $re[] = [
@@ -629,9 +546,7 @@ class HL
 
         if($LeftTime <= 0){
             $game_state = R::Get('game_state');
-            if(R::CheckExit('GamePl:StopBlack')){
-                self::CheckBlack();
-            }
+
             if(R::CheckExit('GamePl:HunterKill')){
                 self::CheckKalantar();
             }
@@ -649,17 +564,13 @@ class HL
                     }
 
                     NG::CheckNight();
-                    if(R::CheckExit('GamePl:HunterKill') || R::CheckExit('GamePl:SendWolfCubeDead')   || R::CheckExit('GamePl:StopBlack') || R::CheckExit('GamePl:RoyceSelectd2')){
+                    if(R::CheckExit('GamePl:HunterKill') || R::CheckExit('GamePl:SendWolfCubeDead') || R::CheckExit('GamePl:RoyceSelectd2')){
                         return false;
                     }
                     self::ChangeGameStatus('day');
                     R::Del('GamePl:SendVote');
                     if(R::CheckExit('GamePl:role_Solh:GroupInSolh')){
                         R::Del('GamePl:role_Solh:GroupInSolh');
-                    }  
-                    if(R::CheckExit('GamePl:SharlatanINTabar')){
-                        R::Del('GamePl:SharlatanINTabar');
-                        R::GetSet(0,'GamePl:SharlatanTabar');
                     }
                     if(R::Get('GamePl:Day_no') == 1){
                         // همزاد،الهه و .. اگر انتخبا نکردن
@@ -703,9 +614,6 @@ class HL
 
                     VT::CheckVoteMessage();
                     VT::CheckVote();
-                    if(R::CheckExit('GamePl:StopBlack')){
-                        return false;
-                    }
                     if(R::CheckExit('GamePl:HunterKill')){
                         return false;
                     }
@@ -725,13 +633,6 @@ class HL
                         }
                     }
 
-
-                    // خب اگه شارلاتان طوفان زده بود اینجا بازش میکنیم برای فرداشب
-                    if(R::CheckExit('GamePl:SharlatanTofan')){
-                        if(R::Get('GamePl:SharlatanTofan') == R::Get('GamePl:Day_no')){
-                            R::Del('GamePl:SharlatanTofan');
-                        }
-                    }
 
                     // خب اگه آهنگ آهن زده بود اینجا بازش میکنیم برای فرداشب
                     if(R::CheckExit('GamePl:AhangarOk')){
@@ -761,9 +662,7 @@ class HL
             self::EditMarkupKeyboard();
 
             if(R::Get('game_state') == "night") {
-                if(!R::CheckExit('GamePl:role_Solh:GroupInSolh') && !R::CheckExit('GamePl:role_Ruler:RulerOk') && !R::CheckExit('GamePl:SharlatanINTabar')) {
-                    self::DeleteDontVote(); // حذف افرادی که 2 بار رای ندادن
-                }
+                self::DeleteDontVote(); // حذف افرادی که 2 بار رای ندادن
             }
 
             R::DelKey('GamePl:Selected:*'); // پاک کردن انتخاب ها
@@ -777,9 +676,7 @@ class HL
             self::SendGroupMessage(true);
         }
     }
-    public static function CheckBlack(){
 
-    }
     public static function UnlockForTeam($setTime = false){
         $P_Team = HL::PlayerByTeam();
         $Wolf =  (count($P_Team['wolf']) > 0 ? $P_Team['wolf'] : false);
@@ -807,82 +704,46 @@ class HL
         if(R::CheckExit('GamePl:EnchanterBittanPlayer')){
             $User_id = R::Get('GamePl:EnchanterBittanPlayer');
             $Detial = self::_getPlayer($User_id);
-            if($Detial) {
-                if ($Detial['user_state'] !== 1) {
-                    R::Del('GamePl:EnchanterBittanPlayer');
-                } else {
-                    $UserMessage = self::$Dt->LG->_('BittenTurned');
-                    self::SendMessage($UserMessage, $User_id);
-                    self::ConvertPlayer($User_id, 'role_WolfGorgine');
-                    self::CheckPlayerEnchanter($User_id);
-                    R::Del('GamePl:EnchanterBittanPlayer');
-                }
+            if($Detial['user_state'] !== 1){
+                R::Del('GamePl:EnchanterBittanPlayer');
+            }else {
+                $UserMessage = self::$Dt->LG->_('BittenTurned');
+                self::SendMessage($UserMessage, $User_id);
+                self::ConvertPlayer($User_id, 'role_WolfGorgine');
+                self::CheckPlayerEnchanter($User_id);
+                R::Del('GamePl:EnchanterBittanPlayer');
             }
         }
 
         if(R::CheckExit('GamePl:BittanPlayer')){
             $User_id = R::Get('GamePl:BittanPlayer');
             $Detial = self::_getPlayer($User_id);
-            if($Detial) {
-                if ($Detial['user_state'] !== 1) {
-                    R::Del('GamePl:BittanPlayer');
-                } else {
-                    $UserMessage = self::$Dt->LG->_('BittenTurned');
-                    self::SendMessage($UserMessage, $User_id);
-                    self::ConvertPlayer($User_id, 'role_WolfGorgine');
-                    R::Del('GamePl:BittanPlayer');
-                }
+            if($Detial['user_state'] !== 1){
+                R::Del('GamePl:BittanPlayer');
+            }else {
+                $UserMessage = self::$Dt->LG->_('BittenTurned');
+                self::SendMessage($UserMessage, $User_id);
+                self::ConvertPlayer($User_id, 'role_WolfGorgine');
+                R::Del('GamePl:BittanPlayer');
             }
         }
-
-        if(R::CheckExit('GamePl:MidnightBittanPlayer')){
-            $User_id = R::Get('GamePl:MidnightBittanPlayer');
-            $Detial = self::_getPlayer($User_id);
-            if($Detial) {
-                if ($Detial['user_state'] !== 1) {
-                    R::Del('GamePl:MidnightBittanPlayer');
-                } else {
-                    self::ConvertPlayer($User_id, 'role_WolfGorgine');
-                    R::Del('GamePl:MidnightBittanPlayer');
-                }
-            }
-        }
-
 
         if(R::CheckExit('GamePl:VampireBitten')){
             $User_id = R::Get('GamePl:VampireBitten');
             $Detial = self::_getPlayer($User_id);
-            if($Detial) {
-                if ($Detial['user_state'] !== 1) {
-                    R::Del('GamePl:VampireBitten');
-                } else {
-                    $UserMessage = self::$Dt->LG->_('BittenTurnedVampire');
-                    self::SendMessage($UserMessage, $User_id);
-                    self::ConvertPlayer($User_id, 'role_Vampire');
-                    R::Del('GamePl:VampireBitten');
-                }
+            if($Detial['user_state'] !== 1){
+                R::Del('GamePl:VampireBitten');
+            }else {
+                $UserMessage = self::$Dt->LG->_('BittenTurnedVampire');
+                self::SendMessage($UserMessage, $User_id);
+                self::ConvertPlayer($User_id, 'role_Vampire');
+                R::Del('GamePl:VampireBitten');
             }
         }
-
-
-        if(R::CheckExit('GamePl:OrlokBittanPlayer')){
-            $User_id = R::Get('GamePl:OrlokBittanPlayer');
-            $Detial = self::_getPlayer($User_id);
-            if($Detial) {
-                if ($Detial['user_state'] !== 1) {
-                    R::Del('GamePl:OrlokBittanPlayer');
-                } else {
-                    self::ConvertPlayer($User_id, 'role_Vampire');
-                    R::Del('GamePl:OrlokBittanPlayer');
-                }
-            }
-        }
-
     }
 
 
     public static function DeleteDontVote(){
-
         $Key = R::keys('GamePl:DontVote:*');
         foreach ($Key as $key) {
             $Ex = explode(':', $key);
@@ -1287,30 +1148,6 @@ class HL
 
         return false;
     }
-    
-    public static function CheckFranc(){
-        $Franc = HL::_getPlayerByRole('role_franc');
-        if($Franc === false){
-            return false;
-        }
-        if($Franc['user_state'] !== 1){
-            return false;
-        }
-
-        $P_Team = self::PlayerByTeam();
-        $FrancD =  (count($P_Team['ferqe']) > 0 ? $P_Team['ferqe'] : false);
-
-        if(!$FrancD){
-            R::GetSet('GamePl:NotSend:'.$Franc['user_id'],R::Get('GamePl:Night_no'));
-            $FrancMessage = self::$Dt->LG->_('FrancDeadCult');
-            self::SendMessage($FrancMessage,$Franc['user_id']);
-            R::GetSet(true,'GamePl:FrancNightOk');
-            R::DelKey('GamePl:role_franc:*');
-            return true;
-        }
-
-        return false;
-    }
 
     public static function CheckPlayerEnchanter($Del){
         $data = R::Sort('GamePl:Enchanter','desc');
@@ -1430,30 +1267,11 @@ class HL
             ['$set' => ['user_state' => $status, 'user_status' => $for ,'dead_time' => time() ]]
         );
 
-        if(R::CheckExit("GamePl:KhalifaSelectRole")){
-            $USerID = R::Get("GamePl:KhalifaSelectRoleUserId");
-            if((float) $Detial['user_id'] == (float) $USerID){
-                R::Del('GamePl:KhalifaSelectRoleAs');
-                R::Del('GamePl:KhalifaSelectRole');
-                $GroupMessage = self::$Dt->LG->_('VoteKillPlayer',array("{0}" => $Name));
-                self::SaveMessage($GroupMessage);
-            }
-        }
-
 
         if(R::Get('GamePl:Night_no') == 0) {
             R::rpush($Detial['user_id'], 'GamePl:NightKill');
         }
 
-        /*
-        if(R::CheckExit('GamePl:KhalifaSelectRole')){
-            $Role = R::Get('amePl:KhalifaSelectRoleAs');
-            if($Detial['user_role'] == $Role){
-                R::Del('GamePl:KhalifaSelectRoleAs');
-                R::Del('GamePl:KhalifaSelectRole');
-            }
-        }
-        */
 
         if(R::CheckExit('GamePl:love:'.$user_id)  && R::CheckExit('GamePl:CheckLover:'.$user_id) == false){
             if($for == "afked"){
@@ -1556,63 +1374,9 @@ class HL
             }
         }
 
-        if($Detial['user_role'] == "role_Margita"){
-            $Shahzade = self::_getPlayerByRole('role_Shahzade');
-            if($Shahzade) {
-                if ($Shahzade['user_state'] == 1) {
-                    $Name = self::ConvertName($Shahzade['user_id'],$Shahzade['fullname_game']);
-                    $shahzadeMessage = self::$Dt->LG->_('DieMargaritaShahzadeMessage',array("{0}" => $Name));
-                    self::SendMessage($shahzadeMessage,$Shahzade['user_id']);
-                    R::GetSet(true,'GamePl:MargaritaKilled');
-                }
-            }
-        }
-        
-        if($Detial['user_role'] == 'role_feriga'){
-            R::GetSet(true,'GamePl:Killed_feriga');
-        }
-
-
-        if($Detial['user_role'] == 'role_viego'){
-            R::GetSet(true,'GamePl:Killed_viego');
-        }
-
-
-        if($Detial['user_role'] == 'role_Firefighter'){
-            self::Fired($Detial);
-        }
-        if($Detial['user_role'] == "role_Qatel" || $Detial['user_role'] == "role_Archer" || $Detial['user_role'] == "role_hilda"){
-            $Morgana = self::_getPlayerByRole('role_morgana');
-           if($Morgana) {
-               $checkRole = self::_getPlayerINRole(['role_Qatel','role_Archer','role_hilda']);
-
-               if (!$checkRole) {
-                 $MorganaMessage = self::$Dt->LG->_('AskMorganaWhenKillAll',array("{0}" => $Name));
-                 self::SendMessage($MorganaMessage,$Morgana['user_id']);
-                   R::GetSet(true,'GamePl:KillAllKillerTeam');
-               }
-           }
-
-        }
-        if($Detial['user_role'] == "role_BlackKnight"){
-            $Birde = self::_getPlayerByRole('role_BrideTheDead');
-            if($Birde) {
-                if ($Birde['user_state'] == 1) {
-                    $Name = self::ConvertName($Birde['user_id'],$Birde['fullname_game']);
-                    $GroupMsg = self::$Dt->LG->_('BrideTheDeadBlackDie',array("{0}" => $Name));
-                    self::SaveMessage($GroupMsg);
-                    self::UserDead($Birde,'black');
-                }
-            }
-        }
-
-
-
-
         if(R::CheckExit('GamePl:BookIn:'.$Detial['user_id'])){
           self::RandomBookChange($Detial['user_id']);
         }
-
         if($Detial['user_role'] == "role_Joker"){
             $Harly = HL::_getPlayerByRole('role_Harly');
             if($Harly){
@@ -1621,16 +1385,6 @@ class HL
                 R::GetSet(true,'GamePl:DiedJoker');
              }
         }
-        if($Detial['user_role'] == "role_Sharlatan"){
-           R::Del('GamePl:SharlatanInTofan');
-        }
-        if($Detial['user_role'] == "role_Khalifa"){
-           $PlayerMsg = self::$Dt->LG->_('PlayerMessageFindKhalifa');
-           self::SendMessage($PlayerMsg,R::Get('GamePl:KhalifaSelectRoleUserId'));
-           R::Del('GamePl:KhalifaSelectRoleAs');
-            R::Del('GamePl:KhalifaSelectRole');
-        }
-
         if($Detial['user_role'] == "role_Harly"){
             $Joker = HL::_getPlayerByRole('role_Joker');
             if($Joker){
@@ -1640,14 +1394,14 @@ class HL
             }
         }
 
-        if($Detial['user_role'] === "role_Princess"){
-            $GetPlayer = R::Keys('GamePl:PrincessPrisoner:*');
+        if($Detial['user_role'] == "role_Princess"){
+            $GetPlayer = R::LRange(0,-1,'GamePl:PrincessPrisoner:*');
             if($GetPlayer) {
                 foreach ($GetPlayer as $row){
                     $explode = explode(':',$row);
                     if(isset($explode['3'])) {
                         $UserId = $explode['3'];
-                         $Player =  self::_getPlayer($UserId);
+                       $Player =  self::_getPlayer($UserId);
                         if($Player['user_state'] !== 1){
                             continue;
                         }
@@ -1657,25 +1411,6 @@ class HL
 
                 }
                 R::DelKey('GamePl:PrincessPrisoner:*');
-            }
-        }
-        if($Detial['user_role'] === "role_Phoenix"){
-            $GetPlayer = R::Keys('GamePl:PhoenixHealer:*');
-            if($GetPlayer) {
-                foreach ($GetPlayer as $row){
-                    $explode = explode(':',$row);
-                    if(isset($explode['3'])) {
-                        $UserId = $explode['3'];
-                         $Player =  self::_getPlayer($UserId);
-                        if($Player['user_state'] !== 1){
-                            continue;
-                        }
-                        $PlayerMessage = self::$Dt->LG->_('MessagePlayerPhoenixDead');
-                        self::SendMessage($PlayerMessage,$Player['user_id']);
-                    }
-
-                }
-                R::DelKey('GamePl:PhoenixHealer:*');
             }
         }
 
@@ -1691,18 +1426,7 @@ class HL
                 }
             }
         }
-        if($Detial['user_role'] == "role_IceQueen" || $Detial['user_role'] == "role_Firefighter" ){
-            $Fire = self::_getPlayerByRole('role_Firefighter',false);
-            $Ice = self::_getPlayerByRole('role_IceQueen',false);
-            if(!$Fire && !$Ice){
-                $LILis = self::_getPlayerByRole('role_Lilis',false);
-                if($LILis && !R::CheckExit('GamePl:DieFireAndIc')) {
-                    $LilisMessage = self::$Dt->LG->_('KillAllTeamLilis');
-                    self::SendMessage($LilisMessage,$LILis['user_id']);
-                    R::GetSet(true,'GamePl:DieFireAndIc');
-                }
-            }
-        }
+
         // اگر توله مرده بود  2 بار بتونن بخورن
         if($Detial['user_role'] == "role_WolfTolle" && $for !== "afked"){
             R::GetSet((R::Get('GamePl:Night_no') + 1),'GamePl:WolfCubeDead');
@@ -1726,8 +1450,8 @@ class HL
         }
         if($Detial['user_role'] == "role_kalantar"){
             if(R::CheckExit('GamePl:BloodthirstyInGame') && R::CheckExit('GamePl:VampireFinded') == false){
-                $Bloodthirsty = HL::_getPlayerByRole('role_Bloodthirsty',false);
-                if($Bloodthirsty){
+                $Bloodthirsty = HL::_getPlayerByRole('role_Bloodthirsty');
+                if($Bloodthirsty['user_state'] == 1){
                     $P_Team = HL::PlayerByTeam();
                     $Vampire =  (count($P_Team['vampire']) > 0 ? $P_Team['vampire'] : false);
                     $VampireName = ($Vampire ? implode(',',array_column($Vampire,'Link')) : false);
@@ -1751,10 +1475,6 @@ class HL
         // چک میکنیم اگه طرف آلفا بود ملکه جنگل نقش بگیره
         if($Detial['user_role'] == "role_WolfAlpha"){
             self::ConvertforestQueen($Name);
-        }
-
-        if($Detial['user_role'] == 'role_shekar'){
-            R::GetSet(true,'GamePl:cult_hunterKill');
         }
 
 
@@ -1782,7 +1502,7 @@ class HL
         if($Detial['user_role'] == "role_Qatel") {
             $Hilda = self::_getPlayerByRole('role_hilda');
             if ($Hilda) {
-                $HildaMessage = self::$Dt->LG->_('KillerKillHilda', array("{0}" => $Name));
+                $HildaMessage = self::$Dt->LG->_('KillerKillHilda', $Name);
                 self::SendMessage($HildaMessage, $Hilda['user_id']);
                 R::GetSet(true,'GamePl:KillerIsKillHildaInGame');
             }
@@ -1800,91 +1520,12 @@ class HL
             // چک کردن برای تبدیل به گرگ اگه همه گرگا مونده بودن
             self::CheckWhiteWolf();
         }
-
-        if($Detial['team'] == "ferqeTeem") {
-            // چک میکنیم فرقه ای تو بازی هست یا نه
-            self::CheckFranc();
-        }
-        
         if($Detial['team'] == "vampire") {
             self::CheckKentVampire();
         }
         return true;
     }
 
-    public static function Fired($Firefighter){
-        $List = R::LRange(0,-1,'GamePl:FirefighterList');
-
-        $Re = [];
-        foreach ($List as $data){
-            $row = json_decode($data,true);
-            $Detial = self::_getPlayer($row['user_id']);
-            if($Detial['user_state'] !== 1){
-                continue;
-            }
-            if(R::CheckExit('GamePl:role_WhiteWolf:AngelIn:'.$row['user_id'])){
-                $MessageForPlayer = self::$Dt->LG->_('WolfMessageGourdWhiteWolf');
-                self::SendMessage($MessageForPlayer,$row['user_id']);
-                $WhiteWolfId = R::Get('GamePl:role_WhiteWolf:AngelIn:'.$row['user_id']);
-                $MessageForWhiteWolf = self::$Dt->LG->_('WhiteWolfGourdFireFighter',array("{0}" => $row['link']));
-                self::SendMessage($MessageForWhiteWolf,$WhiteWolfId);
-                continue;
-            }
-
-            if(R::CheckExit('GamePl:role_morgana:AngelIn:'.$row['user_id'])){
-                $MessageForPlayer = self::$Dt->LG->_('WolfMessageGourdMorgana');
-                self::SendMessage($MessageForPlayer,$row['user_id']);
-                $WhiteWolfId = R::Get('GamePl:role_morgana:AngelIn:'.$row['user_id']);
-                $MessageForWhiteWolf = self::$Dt->LG->_('MorganaHealSuccess',array("{0}" =>$row['link']));
-                self::SendMessage($MessageForWhiteWolf,$WhiteWolfId);
-                R::GetSet($row['link'],'GamePl:role_morgana:AngelSaved');
-                continue;
-            }
-
-            if(R::CheckExit('GamePl:role_angel:AngelIn:'.$row['user_id'])){
-                $MessageForPlayer = self::$Dt->LG->_('AngelInHomeForPlayer');
-                self::SendMessage($MessageForPlayer,$row['user_id']);
-                $AngelId = R::Get('GamePl:role_angel:AngelIn:'.$row['user_id']);
-                $MessageForAngel = self::$Dt->LG->_('AngelInHomeForAngel',array("{0}" =>$row['link']));
-                self::SendMessage($MessageForAngel,$AngelId);
-                R::GetSet($row['link'],'GamePl:role_angel:AngelSaved');
-                continue;
-            }
-            if(R::CheckExit('GamePl:role_franc:AngelIn:'.$Detial['user_id'])){
-                $MessageForPlayer = self::$Dt->LG->_('PlayerMessageFrancS');
-                self::SendMessage($MessageForPlayer,$Detial['user_id']);
-                $FreancId = R::Get('GamePl:role_franc:AngelIn:'.$Detial['user_id']);
-                $MessageForFranc = self::$Dt->LG->_('FireAttackCult',array("{0}" => $row['link']));
-                self::SendMessage($MessageForFranc,$FreancId);
-                R::GetSet($row['link'],'GamePl:role_franc:AngelSaved');
-                continue;
-            }
-
-
-
-            $MessageForPlayer = self::$Dt->LG->_('FireFighterMessageForPlayer');
-            self::SendMessage($MessageForPlayer,$row['user_id'],'firefighter_you');
-
-            if(count($List)  < 3) {
-                $GroupMessage = self::$Dt->LG->_('FireFighterKillPlayerGroupMessage', array("{0}" => $row['link'], "{1}" => self::$Dt->LG->_('user_role', array("{0}" => self::$Dt->LG->_($Detial['user_role']  . "_n")))));
-                self::SaveMessage($GroupMessage);
-            }else{
-                array_push($Re,$row['link']." - ".self::$Dt->LG->_('user_role', array("{0}" => self::$Dt->LG->_($Detial['user_role'] . "_n"))));
-            }
-
-            NG::CheckInHomePlayer($row['user_id'],$row['link'],$Firefighter);
-            self::UserDead($Detial,'fireFighter');
-            self::SaveGameActivity($Detial,'fire',$Firefighter);
-        }
-
-        if($Re){
-            $GroupMessage = self::$Dt->LG->_('FireFighterKillPlayerGroupMessageK',array("{0}" =>implode(PHP_EOL,$Re)));
-            self::SaveMessage($GroupMessage);
-        }
-
-        R::Del('GamePl:FirefighterList');
-        R::Del('GamePl:FirefighterOk');
-    }
     public static function CheckKentVampire(){
 
         $kent = HL::_getPlayerByRole('role_kentvampire');
@@ -1967,7 +1608,7 @@ class HL
         }
         return false;
     }
-    public static function SendMessage($msg,$chat_id = false,$Gif = false,$markdown = false){
+    public static function SendMessage($msg,$chat_id = false,$Gif = false){
         if($chat_id == false){
             $chat_id = self::$Dt->chat_id;
         }
@@ -1979,7 +1620,7 @@ class HL
                     'chat_id' => $chat_id,
                     'video' => $GifKey,
                     'caption' => $msg,
-                    'parse_mode' => (!$markdown ? 'HTML' : 'Markdown'),
+                    'parse_mode' => 'HTML',
                 ]);
             }
         }
@@ -1987,7 +1628,7 @@ class HL
         Request::sendMessage([
             'chat_id' => $chat_id,
             'text' => $msg,
-            'parse_mode' =>  (!$markdown ? 'HTML' : 'Markdown'),
+            'parse_mode' => 'HTML',
         ]);
     }
 
@@ -2030,24 +1671,32 @@ class HL
         return false;
     }
 
-    public static function SendForVampireTeam($msg,$sendMe = false,$gif = false){
+    public static function SendForVampireTeam($msg,$sendMe = false){
         $no_in = ($sendMe ? [$sendMe] : []);
         $user = self::_GetByTeam('vampire');
         if($user){
             foreach ($user as $row){
                 if(!in_array($row['user_id'],$no_in)) {
-                    self::SendMessage($msg,$row['user_id'],$gif);
+                    Request::sendMessage([
+                        'chat_id' => $row['user_id'],
+                        'text' => $msg,
+                        'parse_mode' => 'HTML',
+                    ]);
                 }
             }
         }
     }
-    public static function SendForQatelTeam($msg,$sendMe = false,$gif = false){
+    public static function SendForQatelTeam($msg,$sendMe = false){
         $no_in = ($sendMe ? [$sendMe] : []);
         $user = self::_GetByTeam('qatel');
         if($user){
             foreach ($user as $row){
                 if(!in_array($row['user_id'],$no_in)) {
-                    self::SendMessage($msg,$row['user_id'],$gif);
+                    Request::sendMessage([
+                        'chat_id' => $row['user_id'],
+                        'text' => $msg,
+                        'parse_mode' => 'HTML',
+                    ]);
                 }
             }
         }
@@ -2055,29 +1704,33 @@ class HL
 
 
 
-    public static function SendForWolfTeam($msg,$sendMe = false,$gif = false){
+    public static function SendForWolfTeam($msg,$sendMe = false){
         $no_in = ($sendMe == true ? [$sendMe] : []);
         $user = self::_GetByTeam('wolf');
         if($user){
             foreach ($user as $row){
                 if(!in_array($row['user_id'],$no_in)) {
-                    self::SendMessage($msg,$row['user_id'],$gif);
+                    Request::sendMessage([
+                        'chat_id' => $row['user_id'],
+                        'text' => $msg,
+                        'parse_mode' => 'HTML',
+                    ]);
                 }
             }
         }
     }
 
-    public static function SendForCultTeam($msg,$sendMe = false,$gif = false){
+    public static function SendForCultTeam($msg,$sendMe = false){
         $no_in = ($sendMe == true ? [$sendMe] : []);
         $user = self::_GetByTeam('ferqeTeem');
         if($user){
             foreach ($user as $row){
-                if($row['user_role'] == "role_IceDragon"){
-                    continue;
-                }
-
                 if(!in_array($row['user_id'],$no_in)) {
-                    self::SendMessage($msg,$row['user_id'],$gif);
+                    Request::sendMessage([
+                        'chat_id' => $row['user_id'],
+                        'text' => $msg,
+                        'parse_mode' => 'HTML',
+                    ]);
                 }
             }
         }
@@ -2109,42 +1762,27 @@ class HL
                 }
             }
         }
-
-        if($Detial['user_role'] == "role_shekar" && $Detial['user_role'] !== 'role_Huntsman'){
-            $Huntsman = HL::_getPlayerByRole('role_Huntsman');
-            if($Huntsman) {
-                if ($Huntsman['user_state'] == 1) {
-                    R::GetSet(R::Get('GamePl:Night_no'),'GamePl:NotSend:'.$Huntsman['user_id']);
-                    $HuntsmanMessage = self::$Dt->LG->_('HuntsmanDeadCultHulter',array("{0}" => $PlayerName));
-                    HL::SendMessage($HuntsmanMessage,$Huntsman['user_id']);
-                    self::ConvertPlayer($Huntsman['user_id'],'role_shekar');
-                }
-            }
-        }
-
         if($Detial['user_role'] == "role_kalantar" && $hamzad == false){
 
             if(R::CheckExit('GamePl:BloodthirstyInGame') && R::CheckExit('GamePl:VampireFinded') == false){
-                $Bloodthirsty = HL::_getPlayerByRole('role_Bloodthirsty',false);
-                if($Bloodthirsty) {
-                    if ($Bloodthirsty['user_state'] == 1) {
-                        $P_Team = HL::PlayerByTeam();
-                        $Vampire = (count($P_Team['vampire']) > 0 ? $P_Team['vampire'] : false);
-                        $VampireName = ($Vampire ? implode(',', array_column($Vampire, 'Link')) : false);
-                        if ($Vampire) {
-                            // ارسال پیام برای تیم ومپایر
-                            $VampireMessage = self::$Dt->LG->_('VampireChangeRoleBeforeFinde', array("{0}" => R::Get('GamePl:BloodthirstyInGame')));
-                            HL::SendForVampireTeam($VampireMessage, $Bloodthirsty['user_id']);
-                        }
-                        // ارسال پیام برای اصیل
-                        $BlooadMessage = self::$Dt->LG->_('VampireChangeHunterBeforeFindeBlodMessage', array("{0}" => $Vampire ? $VampireName : self::$Dt->LG->_('VampireNoTeam')));
-                        HL::SendMessage($BlooadMessage, $Bloodthirsty['user_id']);
-
-                        R::GetSet('GamePl:NotSend:' . $Bloodthirsty['user_id'], R::Get('GamePl:Night_no'));
-                        R::GetSet(true, 'GamePl:VampireFinded');
-                        R::GetSet(SE::_s('BVampireChangeConvet'), 'GamePl:VampireConvert');
-                        R::GetSet(true, 'GamePl:Bloodthirsty');
+                $Bloodthirsty = HL::_getPlayerByRole('role_Bloodthirsty');
+                if($Bloodthirsty['user_state'] == 1){
+                    $P_Team = HL::PlayerByTeam();
+                    $Vampire =  (count($P_Team['vampire']) > 0 ? $P_Team['vampire'] : false);
+                    $VampireName = ($Vampire ? implode(',',array_column($Vampire,'Link')) : false);
+                    if($Vampire) {
+                        // ارسال پیام برای تیم ومپایر
+                        $VampireMessage = self::$Dt->LG->_('VampireChangeRoleBeforeFinde', array("{0}" => R::Get('GamePl:BloodthirstyInGame')));
+                        HL::SendForVampireTeam($VampireMessage, $Bloodthirsty['user_id']);
                     }
+                    // ارسال پیام برای اصیل
+                    $BlooadMessage = self::$Dt->LG->_('VampireChangeHunterBeforeFindeBlodMessage',array("{0}" => $Vampire ? $VampireName : self::$Dt->LG->_('VampireNoTeam')));
+                    HL::SendMessage($BlooadMessage,$Bloodthirsty['user_id']);
+
+                    R::GetSet('GamePl:NotSend:'.$Bloodthirsty['user_id'],R::Get('GamePl:Night_no'));
+                    R::GetSet(true,'GamePl:VampireFinded');
+                    R::GetSet(SE::_s('BVampireChangeConvet'),'GamePl:VampireConvert');
+                    R::GetSet(true,'GamePl:Bloodthirsty');
                 }
 
             }
@@ -2261,16 +1899,6 @@ class HL
 
     public static function BittanPlayerEnchanter($user_id){
         R::GetSet((float) $user_id,'GamePl:EnchanterBittanPlayer');
-    }
-
-
-
-    public static function BittanPlayerMidnight($user_id){
-        R::GetSet((float) $user_id,'GamePl:MidnightBittanPlayer');
-    }
-
-    public static function BittanPlayerOrlok($user_id){
-        R::GetSet((float) $user_id,'GamePl:OrlokBittanPlayer');
     }
 
 
@@ -2524,7 +2152,7 @@ class HL
         $result = self::$Dt->collection->games_players->find([
             'game_id' => self::$Dt->game_id
             ,'group_id' => self::$Dt->chat_id
-            ,'team' => ['$nin' => ['wolf']]
+            ,'team' => ['$nin' => 'wolf']
             ,'user_state' => 1
             ,'user_status' => 'on'
             ,'user_id' => ['$nin' => $not_in]
@@ -2610,8 +2238,6 @@ class HL
         $Count['monafeq'] = 0;
         $Count['Firefighter'] = 0;
         $Count['vampire'] = 0;
-        $Count['joker'] = 0;
-        $Count['black'] = 0;
 
         foreach ($Players as $row){
 
@@ -2621,17 +2247,7 @@ class HL
                 case 'role_WolfGorgine':
                 case 'role_Wolfx':
                 case 'role_WolfAlpha':
-                case 'role_midwolf':
                     $Count['wolf']++;
-                    break;
-                case 'role_Qatel':
-                case 'role_Archer':
-                case 'role_hilda':
-                    $Count['qatel']++;
-                    break;
-                case 'role_BlackKnight':
-                case 'role_BrideTheDead':
-                    $Count['black']++;
                     break;
                 case 'role_forestQueen':
                     if (R::CheckExit('GamePl:role_forestQueen:AlphaDead')) {
@@ -2639,7 +2255,6 @@ class HL
                     }
                     break;
                 case 'role_Vampire':
-                case 'role_orlok':
                 case 'role_Bloodthirsty':
                 case 'role_kentvampire':
                     $Count['vampire']++;
@@ -2665,7 +2280,7 @@ class HL
                     if(in_array($row['user_role'],$Wolf)){
                         array_push($OnTeam, $row['team']);
                     }
-                }elseif($row['team'] == "rosta" || $row['team'] == "ferqeTeem" || $row['team'] == "qatel" || $row['team'] == "vampire" || $row['team'] == "monafeq" || $row['team'] == "lucifer" || $row['team'] == "Firefighter"  || $row['team'] == "black"){
+                }elseif($row['team'] == "rosta" || $row['team'] == "ferqeTeem" || $row['team'] == "qatel" || $row['team'] == "vampire" || $row['team'] == "monafeq" || $row['team'] == "lucifer" || $row['team'] == "Firefighter"){
                     array_push($OnTeam, $row['team']);
                 }
             }
@@ -2723,13 +2338,6 @@ class HL
         if(R::CheckExit('GamePl:EnchanterBittanPlayer')){
             return false;
         }
-        if(R::CheckExit('GamePl:MidnightBittanPlayer')){
-            return false;
-        }
-
-        if(R::CheckExit('GamePl:OrlokBittanPlayer')){
-            return false;
-        }
         // چک میکنیم کسی هست واسه تبدیل یا نه
         if(R::CheckExit('GamePl:VampireBitten')){
             return false;
@@ -2753,8 +2361,6 @@ class HL
         $RoleOn = array_column($AliveTeam['on_role'], 'user_role');
         $Team = $AliveTeam['on_team'];
         $CountTeam = $AliveTeam['Count'];
-
-
         switch ($CountPlayer){
             case 0:
                 return 'nothing';
@@ -2791,15 +2397,6 @@ class HL
                 if($checkLove['count'] == 2 && $checkLove['heals']){
                     return 'lover';
                 }
-
-                if(in_array('role_BlackKnight',$RoleOn) || in_array('role_BrideTheDead',$RoleOn) ){
-                    $GeN = self::GetRoleNotIn('black');
-                    if($GeN){
-                        self::UserDead($GeN['user_id'],'black');
-                    }
-                    return 'black';
-                }
-
                 // چک میکنیم اگه ، منافق با جادو ... زنده بود کسی برنده نشه
                 if(in_array('role_monafeq',$RoleOn) and in_array('role_WolfJadogar',$RoleOn)   || in_array('role_Honey',$RoleOn)  || in_array('role_enchanter',$RoleOn) || in_array('role_Joker',$RoleOn) || in_array('role_Harly',$RoleOn)){
                     return 'nothing';
@@ -2914,18 +2511,6 @@ class HL
                     self::UserDead($AliveTeam['on_role'][$AnyKey]['user_id'],'kill');
                     return 'qatel';
                 }
-
-                if(in_array('role_morgana',$RoleOn)){
-                    $SearchShkey = array_keys($RoleOn, "role_morgana");
-                    $Qatel_key = $SearchShkey['0'];
-                    $AnyKey = ($Qatel_key == 0 ? 1 : 0);
-                    $Killer_name = $AliveTeam['on_role'][$Qatel_key]['link'];
-                    $GroupMessage = self::$Dt->LG->_('SerialKillerWinsOverpowerMorgana',array("{0}" => $Killer_name,"{1}" => $AliveTeam['on_role'][$AnyKey]['link']));
-                    self::SaveMessage($GroupMessage);
-                    self::UserDead($AliveTeam['on_role'][$AnyKey]['user_id'],'kill');
-                    return 'qatel';
-                }
-
                 if(in_array('role_Archer',$RoleOn)){
                     $SearchShkey = array_keys($RoleOn, "role_Archer");
                     $Qatel_key = $SearchShkey['0'];
@@ -2944,9 +2529,7 @@ class HL
                 }
                 if(in_array('wolf',$Team)){
                     $GeN = self::GetRoleNotIn('wolf');
-                    if($GeN) {
-                        self::UserDead($GeN['user_id'], 'eat');
-                    }
+                    self::UserDead($GeN['user_id'],'eat');
                     return 'wolf';
                 }
                 if(in_array('ferqeTeem',$Team)){
@@ -2969,24 +2552,20 @@ class HL
                 break;
         }
 
-
         if(in_array('role_Joker',$RoleOn) || in_array('role_Harly',$RoleOn)){
             if(R::CheckExit('GamePl:FindedBook')){
-                if((int) R::Get('GamePl:FindedBook') >= 3){
+                if((int) R::Get('GamePl:FindedBook') >= 5){
                     return 'joker';
                 }
-            }elseif($CountPlayer <= 3){
-                return 'joker';
             }
         }
-
 
         // اگه قاتل بود بازی تموم نمیشه مسلما
         if(in_array('qatel',$Team)){
             // اگر کماندار با قاتل بود
-            if(in_array('role_Qatel',$RoleOn)  || in_array('role_Archer',$RoleOn) ||  in_array('role_morgana',$RoleOn)){
+            if(in_array('role_Qatel',$RoleOn) && in_array('role_Archer',$RoleOn)){
                 // اگر تعداد تیم قاتل برابر یا مساوی با بقییه تیم ها بود
-                if($CountTeam['qatel'] >= $CountTeam['wolf']+$CountTeam['rosta']+$CountTeam['ferqeTeem']+$CountTeam['Firefighter']+$CountTeam['vampire']+$CountTeam['black'] +$CountTeam['monafeq']){
+                if($CountTeam['qatel'] >= $CountTeam['wolf']+$CountTeam['rosta']+$CountTeam['ferqeTeem']+$CountTeam['Firefighter']+$CountTeam['vampire']+$CountTeam['monafeq']){
                     // چک میکنیم اگه شب بعد کماندار تیر داره و تیم قاتل برابر با بقییه تیم هاست تیم قاتل میبره
                     $ArcherSend = R::Get('GamePl:ArcherSendFor');
                     $Night_now = R::Get('GamePl:Night_no') + 1;
@@ -3000,14 +2579,7 @@ class HL
         }
 
 
-        if($CountTeam['black'] >= ($CountTeam['rosta']+$CountTeam['monafeq']) && $CountTeam['Firefighter'] == 0 && $CountTeam['wolf'] == 0 && $CountTeam['vampire'] == 0 && $CountTeam['ferqeTeem'] == 0 ){
-            return 'black';
-        }
-        if(in_array('role_BlackKnight',$RoleOn) || in_array('role_BrideTheDead',$RoleOn)){
-            return false;
-        }
-
-        if($CountTeam['Firefighter'] >= ($CountTeam['rosta']+$CountTeam['monafeq']) && $CountTeam['wolf'] == 0 && $CountTeam['vampire'] == 0 && $CountTeam['black'] == 0 && $CountTeam['ferqeTeem'] == 0 ){
+        if($CountTeam['Firefighter'] >= ($CountTeam['rosta']+$CountTeam['monafeq']) && $CountTeam['wolf'] == 0 && $CountTeam['vampire'] == 0 && $CountTeam['ferqeTeem'] == 0 ){
             return 'Firefighter';
         }
 
@@ -3021,7 +2593,7 @@ class HL
             return false;
         }
 
-        if($CountTeam['ferqeTeem'] > 0 && $CountTeam['Firefighter'] == 0 && $CountTeam['monafeq'] == 0 && $CountTeam['rosta'] == 0 && $CountTeam['black'] == 0 && $CountTeam['wolf'] == 0 &&  $CountTeam['vampire'] == 0){
+        if($CountTeam['ferqeTeem'] > 0 && $CountTeam['Firefighter'] == 0 && $CountTeam['monafeq'] == 0 && $CountTeam['rosta'] == 0 && $CountTeam['wolf'] == 0 &&  $CountTeam['vampire'] == 0){
             return 'ferqeTeem';
         }
 
@@ -3031,13 +2603,13 @@ class HL
         }
 
 
-        if($CountTeam['wolf'] >= ($CountTeam['rosta']+$CountTeam['ferqeTeem']+$CountTeam['Firefighter']+$CountTeam['vampire']+$CountTeam['monafeq']+$CountTeam['black'])){
+        if($CountTeam['wolf'] >= ($CountTeam['rosta']+$CountTeam['ferqeTeem']+$CountTeam['Firefighter']+$CountTeam['vampire']+$CountTeam['monafeq'])){
             $checkLove = self::CheckingLove();
             if($checkLove['count'] == 2 and $checkLove['heals']) {
                 $TeamLove = $checkLove['wolfTeam'];
                 $TotalOnTeam = $CountTeam['rosta']+$CountTeam['ferqeTeem']+$CountTeam['Firefighter']+$CountTeam['vampire']+$CountTeam['monafeq'];
                 if (in_array('role_tofangdar', $RoleOn) && R::CheckExit('GamePl:GunnerBult')) {
-                    if(($TotalOnTeam == $CountTeam['wolf']) || ($TotalOnTeam + 1 == $CountTeam['wolf']  && $TeamLove)){
+                    if($TotalOnTeam == $CountTeam['wolf'] || $TotalOnTeam + 1 == $CountTeam['wolf'] && $TeamLove){
                         return false;
                     }
                 }
@@ -3046,11 +2618,11 @@ class HL
             return 'wolf';
         }
 
-        if($CountTeam['vampire'] >= ($CountTeam['rosta']+$CountTeam['Firefighter']+$CountTeam['monafeq']) && $CountTeam['black'] == 0 && $CountTeam['wolf'] == 0 && $CountTeam['ferqeTeem'] == 0){
+        if($CountTeam['vampire'] >= ($CountTeam['rosta']+$CountTeam['Firefighter']+$CountTeam['monafeq']) && $CountTeam['wolf'] == 0 && $CountTeam['ferqeTeem'] == 0){
             return 'vampire';
         }
 
-        if($CountTeam['wolf'] == 0 && $CountTeam['Firefighter'] == 0 && $CountTeam['black'] == 0 && $CountTeam['ferqeTeem'] == 0  && $CountTeam['vampire'] == 0 && $CountTeam['Firefighter'] == 0  && $CountTeam['rosta'] > 0){
+        if($CountTeam['wolf'] == 0 && $CountTeam['Firefighter'] == 0 && $CountTeam['ferqeTeem'] == 0  && $CountTeam['vampire'] == 0 && $CountTeam['Firefighter'] == 0  && $CountTeam['rosta'] > 0){
             return 'rosta';
         }
 
@@ -3068,30 +2640,6 @@ class HL
                     'chat_id' => self::$Dt->chat_id,
                     'video' => R::RandomGif('win_rosta'),
                     'caption' => self::$Dt->LG->_('winner_rosta'),
-                    'parse_mode' => 'HTML',
-                ]);
-                break;
-            case 'vf':
-                return Request::sendVideo([
-                    'chat_id' => self::$Dt->chat_id,
-                    'video' => R::RandomGif('win_vf'),
-                    'caption' => self::$Dt->LG->_('winner_vf'),
-                    'parse_mode' => 'HTML',
-                ]);
-                break;
-                case 'black':
-                return Request::sendVideo([
-                    'chat_id' => self::$Dt->chat_id,
-                    'video' => R::RandomGif('win_black'),
-                    'caption' => self::$Dt->LG->_('winner_black'),
-                    'parse_mode' => 'HTML',
-                ]);
-                break;
-                case 'joker':
-                return Request::sendVideo([
-                    'chat_id' => self::$Dt->chat_id,
-                    'video' => R::RandomGif('win_joker'),
-                    'caption' => self::$Dt->LG->_('winner_joker'),
                     'parse_mode' => 'HTML',
                 ]);
                 break;
@@ -3213,7 +2761,7 @@ class HL
     }
 
     public static function GetLevelUPUser($xp){
-        $FXp = (int) $xp;
+        $FXp = $xp;
 
         $Level = 1;
         if($FXp > 1000 && $FXp < 2000){
@@ -3272,50 +2820,8 @@ class HL
             $Level = 28;
         }elseif($FXp > 168000 && $FXp < 176000){
             $Level = 29;
-        }elseif($FXp > 176000 && $FXp < 230000){
+        }elseif($FXp > 176000){
             $Level = 30;
-        }elseif($FXp > 230000 && $FXp < 340000){
-            $Level = 31;
-        }elseif($FXp > 340000 && $FXp < 440000){
-            $Level = 32;
-        }elseif($FXp > 440000 && $FXp < 560000){
-            $Level = 33;
-        }elseif($FXp > 560000 && $FXp < 670000){
-            $Level = 34;
-        }elseif($FXp > 670000 && $FXp < 790000){
-            $Level = 35;
-        }elseif($FXp > 790000 && $FXp < 880000){
-            $Level = 36;
-        }elseif($FXp > 880000 && $FXp < 990000){
-            $Level = 37;
-        }elseif($FXp > 990000 && $FXp < 1010000){
-            $Level = 38;
-        }elseif($FXp > 1010000 && $FXp < 1025000){
-            $Level = 39;
-        }elseif($FXp > 1025000 && $FXp < 1065000 ){
-            $Level = 40;
-        }elseif($FXp > 1065000 && $FXp < 1095000 ){
-            $Level = 41;
-        }elseif($FXp > 1095000 && $FXp < 1105000 ){
-            $Level = 42;
-        }elseif($FXp > 1105000 && $FXp < 1109000 ){
-            $Level = 43;
-        }elseif($FXp > 1109000 && $FXp < 1110000 ){
-            $Level = 44;
-        }elseif($FXp > 1110000 && $FXp < 1120000 ){
-            $Level = 45;
-        }elseif($FXp > 1120000 && $FXp < 1128000 ){
-            $Level = 46;
-        }elseif($FXp > 1128000 && $FXp < 1138000 ){
-            $Level = 47;
-        }elseif($FXp > 1138000 && $FXp < 1148000 ){
-            $Level = 48;
-        }elseif($FXp > 1148000 && $FXp < 1168000 ){
-            $Level = 48;
-        }elseif($FXp > 1168000 && $FXp < 1178000 ){
-            $Level = 49;
-        }elseif($FXp > 1178000  ){
-            $Level = 50;
         }
 
         return $Level;
@@ -3381,7 +2887,7 @@ class HL
             $UserLevelN = self::GetLevelUPUser($FXp);
 
             if($UserLevelN > $UserLevel){
-                $LAng = self::$Dt->L->_('NewLevel',array("{0}" => self::$Dt->L->_('level_'.$UserLevel),"{1}" => self::$Dt->L->_('level_'.$UserLevelN)));
+                $LAng = self::$Dt->L->_('NewLevel',self::$Dt->L->_('level_'.$UserLevel),self::$Dt->L->_('level_'.$UserLevelN));
                 HL::SendMessage($LAng,$Detial['user_id']);
             }
 
@@ -3454,12 +2960,10 @@ class HL
                 }
             }
 
-            $CountCount = ($Win ? $AllPl * 10 : $AllPl * 4);
 
             self::$Dt->collection->Players->updateOne(
                 ['user_id' => (float) $Detial['user_id']],
                 ['$set' => [
-                    'coin' => ((isset($array['coin']) ? $array['coin'] : 0) +  $CountCount),
                     'total_game' => $array['total_game'] + 1
                     ,'LoserGames'=> $array['LoserGames'] + $Los
                     ,'SlaveGames' => $array['SlaveGames'] + $Win
@@ -3480,7 +2984,7 @@ class HL
         $NobesCount = 0;
         $AllPlayer = self::_getCountPlayers();
         $PlayerOn = self::_getCountPlayer();
-        $winners = [];
+
 
         foreach ($Players as $row){
             //شرکت در یک بازی که هیچ برنده ای ندارد
@@ -3498,19 +3002,12 @@ class HL
             }
 
             $CheckWin =  (self::CheckLover($row['user_id'],$Winner) == true ? "win" : ($row['user_role'] == "role_Hamzad" ? "lost" : ($row['user_state'] == 2 ? "smite" :  ($row['team'] == $Winner ? "win" : "lost"))));
-            if($row['user_role'] == "role_dozd"){
-                $CheckWin = "win";
-            }
+
             if($row['user_role'] == "role_Watermelon"){
                 $CheckWin = "win";
             }
-            if($CheckWin == 'win'){
-                array_push($winners,$row['user_id']);
-            }
-
-
             // از اول بازی فرقه گرا باشی و زنده بمونی و ببری
-            if(($row['user_role'] == "role_ferqe" && !R::CheckExit('GamePl:ChangedUserRole:' . $row['user_id']) && $row['user_state'] == 1 && $CheckWin == "win") || ($row['user_role'] == "role_Royce" && !R::CheckExit('GamePl:ChangedUserRole:' . $row['user_id']) && $row['user_state'] == 1 && $CheckWin == "win")){
+            if($row['user_role'] == "role_ferqe" && !R::CheckExit('GamePl:ChangedUserRole:'.$row['user_id']) && $row['user_state'] == 1 && $CheckWin == "win" || $row['user_role'] == "role_Royce" && !R::CheckExit('GamePl:ChangedUserRole:'.$row['user_id']) && $row['user_state'] == 1 && $CheckWin == "win"){
                 self::SavePlayerAchivment($row['user_id'],'Cult_Leader');
             }
 
@@ -3519,9 +3016,9 @@ class HL
             $Lover = (R::CheckExit('GamePl:love:'.$row['user_id'])  ? "❤️" : "");
 
 
-            $UserRole = (R::Get('expose_role') == "all" ? "*".($row['user_role'] !== "" ? self::$Dt->LG->_($row['user_role']."_n") : "Error")."*" : "");
-            $Name =  self::ConvertName($row['user_id'],$row['fullname_game'],true);
-            $End = $Name.": ".$Lover." ".$OnOrDead.$UserRole." ".$WinOrLost;
+            $UserRole = (R::Get('expose_role') == "all" ? "<strong>".($row['user_role'] !== "" ? self::$Dt->LG->_($row['user_role']."_n") : "Error")."</strong>" : "");
+            $Name =  self::ConvertName($row['user_id'],$row['fullname_game']);
+            $End = $Name.": ".$Lover." ".$OnOrDead.$UserRole." ".PHP_EOL.$WinOrLost;
             $CountGame = self::SaveUserState($row,$CheckWin,$AllPlayer);
             if($CountGame < 50){
                 $NobesCount++;
@@ -3534,50 +3031,18 @@ class HL
             array_push($Re,$End);
         }
 
-        $GameMode = R::Get('GamePl:gameModePlayer');
-        if($GameMode == 'coin'){
-            $AllCoin = ((int) $AllPlayer  * 5000) - 500;
-            $countWinner = count($winners);
-            $FonPlayerOnCoin = round($AllCoin / $countWinner);
-            foreach($winners as $user_id){
-                $result = self::$Dt->collection->Players->findOne(['user_id' => (float)$user_id]);
-                if($result) {
-                    $array = iterator_to_array($result);
-                    self::UpdateCoin((((int) $array['coin']) + ((int) $FonPlayerOnCoin)), $user_id);
-                    Request::sendMessage([
-                        'chat_id' => $user_id,
-                        'text' => self::$Dt->L->_('WinCoinEndGame', array("{0}" => $FonPlayerOnCoin)),
-                        'disable_web_page_preview' => 'true',
-                        'parse_mode' => 'HTML'
-                    ]);
-                }
-            }
-
-        }
-
         $TimeToLeft = (time() - R::Get('GamePl:StartedTime'));
-
-        $GroupMessage = self::$Dt->LG->_('endGame',array("{0}" =>"{$PlayerOn}/$AllPlayer","{1}" => implode(PHP_EOL,$Re),"{2}" => gmdate("G:i:s", $TimeToLeft)));
-
-        self::SendMessage($GroupMessage,false,false,true);
-
 
         // ذخیره اطلاعات بازی گروه
         self::GroupStats(['game_time' => $TimeToLeft,'player_count' => $AllPlayer ,'nobes_player' => $NobesCount]);
 
         self::SaveGameEndData($Players,$AllPlayer);
 
-
+        $GroupMessage = self::$Dt->LG->_('endGame',array("{0}" =>"{$PlayerOn}/$AllPlayer","{1}" => implode(PHP_EOL,$Re),"{2}" => gmdate("G:i:s", $TimeToLeft)));
+        self::SendMessage($GroupMessage);
         return $Re;
     }
-    public static function FindUserId($id){
-        $result = self::$Dt->collection->Players->findOne(['user_id' => (float) $id]);
-        if ($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-        return false;
-    }
+
     public static function GroupStats($Data){
         $afked = (int) (R::CheckExit('GamePl:AfkedPlayer') ? R::Get('GamePl:AfkedPlayer') : 0);
         self::$Dt->collection->group_stats->insertOne([
@@ -3608,6 +3073,7 @@ class HL
         self::GameEndMessage($Winner);
         // لیست برد و باخت رو هم میفرستیم تو بازی
         self::SendListEndGame($Winner);
+        // بازی گروه رو ببند
         self::GroupClosedThGame();
 
     }
@@ -3615,13 +3081,17 @@ class HL
     public static function SaveKillWolf($wolfTeam,$Detial){
 
         foreach ($wolfTeam as $row){
+            if(R::CheckExit('GamePl:Selected:'.$Detial['user_id'])){
                 HL::SaveGameActivity($Detial,'eat',['user_id'=> $row['user_id'],'fullname'=> $row['Link']]);
+            }
         }
     }
     public static function SaveKillVampire($vampireTeam,$Detial){
 
         foreach ($vampireTeam as $row){
+            if(R::CheckExit('GamePl:Selected:'.$Detial['user_id'])){
                 HL::SaveGameActivity($Detial,'vampire',['user_id'=> $row['user_id'],'fullname'=> $row['Link']]);
+            }
         }
     }
     public static function SaveVoteKillVote($Array,$Detial){
@@ -3833,110 +3303,42 @@ class HL
         switch ($user['user_role']){
             case 'role_Vampire':
                 $VampireMessage = self::$Dt->LG->_("PrincessPrisonerVampireTeam",array("{0}" => $U_name));
-                self::SendForVampireTeam($VampireMessage,$user['user_id'],'prince_zd');
+                self::SendForVampireTeam($VampireMessage,$user['user_id']);
             break;
             case 'role_ferqe':
             case 'role_Royce':
                 $CultMessage = self::$Dt->LG->_("PrincessPrisonerCultTeam",array("{0}" => $U_name));
-                self::SendForCultTeam($CultMessage,$user['user_id'],'prince_zd');
+                self::SendForCultTeam($CultMessage,$user['user_id']);
               break;
             case 'role_WolfTolle':
             case 'role_WolfGorgine':
             case 'role_Wolfx':
             case 'role_WolfAlpha':
                 $WolfMessage = self::$Dt->LG->_("PrincessPrisonerWolfTeam",array("{0}" => $U_name));
-                self::SendForWolfTeam($WolfMessage,$user['user_id'],'prince_zd');
+                self::SendForWolfTeam($WolfMessage,$user['user_id']);
             break;
             case 'role_Qatel':
                 $Hilda = HL::_getPlayerByRole('role_hilda');
                 if($Hilda) {
                     $HildaMessage = self::$Dt->LG->_("PrincessPrisonerHilda", array("{0}" => $U_name));
-                    self::SendMessage($HildaMessage,$Hilda['user_id'],'prince_zd');
+                    self::SendMessage($HildaMessage,$Hilda['user_id']);
                 }
                 $Archer = HL::_getPlayerByRole('role_Archer');
                 if($Archer) {
                     $ArcherMessage =  self::$Dt->LG->_("PrincessPrisonerKillerArcher", array("{0}" => $U_name));
-                    self::SendMessage($ArcherMessage,$Archer['user_id'],'prince_zd');
+                    self::SendMessage($ArcherMessage,$Archer['user_id']);
                 }
            break;
         }
 
         $PlayerMessage = self::$Dt->LG->_('PrincessPrisoner');
-        self::SendMessage($PlayerMessage,$user['user_id'],'prince_zd');
+        self::SendMessage($PlayerMessage,$user['user_id']);
         R::GetSet(true,'GamePl:PrincessPrisoner:'.$user['user_id']);
         $PrincessMessage = self::$Dt->LG->_('PrincessPrisonerSuccess',array("{0}" => $U_name));
         HL::SendMessage($PrincessMessage,$Princess['user_id']);
         return true;
     }
 
-     public static  function GetMadosaMessage($Detial){
-         $Name = self::ConvertName($Detial['user_id'],$Detial['fullname_game']);
-         switch ($Detial['user_role']){
-             case 'role_shekar':
-                 $GroupMessage = self::$Dt->LG->_('MadosaCultHunter',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-             break;
-             case 'role_faheshe':
-                 $GroupMessage = self::$Dt->LG->_('MadosaFaheshe',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_WolfTolle':
-             case 'role_WolfGorgine':
-             case 'role_Wolfx':
-             case 'role_WolfAlpha':
-             case 'role_forestQueen':
-             case 'role_WhiteWolf':
-                 $GroupMessage = self::$Dt->LG->_('MadosaWolf',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_ferqe':
-             case 'role_Royce':
-             $GroupMessage = self::$Dt->LG->_('MdosaCult',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_Vampire':
-             case 'role_Bloodthirsty':
-             case 'role_kentvampire':
-                 $GroupMessage = self::$Dt->LG->_('MadosaVampire',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_Knight':
-                 $GroupMessage = self::$Dt->LG->_('MadosaKnight',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-                 case 'role_Qatel':
-                 $GroupMessage = self::$Dt->LG->_('MadosaKiller',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_Fereshte':
-                 $GroupMessage = self::$Dt->LG->_('MadosaFereshte',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-             case 'role_hilda':
-                 $GroupMessage = self::$Dt->LG->_('MadosaHilda',array("{0}" => $Name));
-                 self::SaveMessage($GroupMessage);
-                 self::UserDead($Detial,'madosa');
-                 return true;
-                 break;
-         }
-    }
-    
     public static function checkUserINPrisoner($Detial){
         if(!R::CheckExit('GamePl:PrincessPrisoner:'.$Detial['user_id'])) return false;
         return  true;
@@ -3944,15 +3346,5 @@ class HL
     public static function CheckPhoenixHeal($Detial){
         if(!R::CheckExit('GamePl:PhoenixHealer:'.$Detial['user_id'])) return false;
         return  true;
-    }
-    public static function GetPlayer($user_id){
-        $user_id = (float) $user_id;
-        $result = self::$Dt->collection->Players->findOne(['user_id'=>  $user_id]);
-        if($result) {
-            $array = iterator_to_array($result);
-            return $array;
-        }
-
-        return false;
     }
 }

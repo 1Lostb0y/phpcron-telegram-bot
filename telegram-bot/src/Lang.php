@@ -100,8 +100,7 @@ class Lang {
         ];
 
         //url-ify the data for the POST
-        /** @noinspection SuspiciousLoopInspection */
-        foreach($fields as $key => $value) { $fields_string .= $key.'='.$value.'&'; }
+        foreach($fields as $key=>$value) { $fields_string .= $key.'='.$value.'&'; }
         rtrim($fields_string, '&');
 
         //open connection
@@ -145,8 +144,6 @@ class Lang {
             $text = $this->data[$language][$key];
 
             if(is_array($arguments)) {
-                //url-ify the data for the POST
-                /** @noinspection SuspiciousLoopInspection */
                 foreach ($arguments as $key => $val) {
 
                     $text = str_replace($key, $val, $text);
@@ -159,8 +156,6 @@ class Lang {
         $text = $General[$key];
 
         if(is_array($arguments)) {
-            //url-ify the data for the POST
-            /** @noinspection SuspiciousLoopInspection */
             foreach ($arguments as $key => $val) {
                 $text = str_replace($key, $val, $text);
             }

@@ -1,4 +1,13 @@
 <?php
+/**
+ * Command Manager for Telegram Bot
+ * 
+ * This file contains the CM class which handles various commands and interactions
+ * for the Telegram bot.
+ * 
+ * @package phpcron\CronBot
+ * @author phpcron
+ */
 
 namespace phpcron\CronBot;
 
@@ -7,47 +16,42 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\Entities\InlineQuery\InlineQueryResultArticle;
 use Longman\TelegramBot\Entities\InputMessageContent\InputTextMessageContent;
 
+/**
+ * Command Manager (CM) class
+ * 
+ * Handles various bot commands and interactions with users
+ */
 class CM
 {
     /**
-     * Cron object
+     * Hook object instance
      *
-     * @var \phpcron\CronBot\cron
+     * @var \phpcron\CronBot\Hook
      */
     private static $Dt;
-    
+
     /**
-     * Global properties to prevent undefined property notices
+     * Initialize the CM class with a Hook instance
+     *
+     * @param Hook $Dt The Hook object to initialize with
+     * @return void
+     * @throws Exception\CronException If invalid Hook object is provided: void
+     *
+    /**
+     * Initialize the CM class with a Hook instance
+     *
+     * @param Hook $Dt The Hook object to initialize with
+     * @return void
+     * @throws Exception\CronException If invalid Hook object is provided
      */
-    private static $AllowGroups = [];
-    private static $Bot_admins = [];
-    private static $PlayerLink = '';
-    private static $ChallengeJoin = '';
-    private static $JoinLink = '';
-    private static $callback_id = '';
-    private static $in_game = 0;
-    private static $user_role = '';
-    private static $user_link = '';
-    private static $ReplayTo = null;
-    private static $ReplayFullname = '';
-    private static $fullname = '';
-    private static $typeChat = '';
-    private static $groupName = '';
-    private static $Player = [];
-    private static $Latency = [];
-    private static $LatencyM = '';
-    private static $admin = 0;
-    private static $user_id = 0;
-    private static $chat_id = 0;
-    private static $message_id = 0;
-    private static $text = '';
-    private static $allow = 0;
-    private static $data = '';
-
-    public static function initialize(Hook $Dt)
+    /**
+     * Process the free coin request from a user
+     *
+     * @return \Longman\TelegramBot\Entities\ServerResponse
+     */
+    public static function initialize(Hook $Dt): void
     {
-
-        if (!($Dt instanceof Hook)) {
+        if (!($Dt instanceof Hook))  {
             throw new Exception\CronException('Invalid Hook Pointer!');
         }
 
@@ -55,20 +59,48 @@ class CM
     }
 
 
+
+    /**
+     * Process the free coin request from a user
+     *
+     * @return \Longman\TelegramBot\Entities\ServerResponse
+     */
+    public static function CM_FreeCoin()
+    {
+        // Get user ID safely using getUserId() method if it exists, otherwise fall back to direct property access
+        $userId = method_exists(self::$Dt, 'getUserId') ? self::$Dt->getUserId() : (int)$userId; 
+        
+        $NoP = RC::NoPerfix();
+        if ($NoP->exists('get_free_coin:'.$userId)) {
+            return Request::sendMessage([
+                'chat_id' => I$userId,
+                'text' => self::$Dt->L->_('GetFreeCoinLast'),
+                'parse_mode' => 'HTML'
+            ]);
+        }
+
+        GR::MinCreditCredit(500);
+        $NoP->set('get_free_coin:'.$userId, true);
+        return Request::sendMessage([
+            'chat_id' => $userId,
+            'text' => self::$Dt->L->_('FreeCoinSuccess'),
+            'parse_mode' => 'HTML'
+        ]);
+    }
     /*
      * Start Command Code
      */
     public static function CM_Start(){
 
-        if(!isset(self::$Dt->text) || empty(self::$Dt->text)) {
-            if(!self::$Dt->user_id) {
+        if(empty(self::$Dt->text)) {
+            if(isset(self::$Dt->user_id)) {
                 Request::sendMessage([
                     'chat_id' => self::$Dt->user_id,
                     'text' => self::$Dt->L->_('StartBot'),
                     'parse_mode' => 'HTML'
                 ]);
             }
-        }elseif(isset(self::$Dt->text) && strpos(self::$Dt->text, 'joinToGAME_') !== false) {
+        }elseif(strpos(self::$Dt->text, 'joinToGAME_') !== false) {
             $CheckBan = GR::CheckUserInBan(self::$Dt->user_id);
             if($CheckBan){
                 if($CheckBan['state'] == false){
@@ -76,22 +108,48 @@ class CM
                         switch ($CheckBan['key']) {
                             case 'ban_ever':
                                 $UserLang = self::$Dt->L->_($CheckBan['key']);
-                                return Request::sendMessage(['chat_id' => self::$Dt->user_id,
+turn Request::sendMessage(['chat_id' => self::$Dt->user_id,
                                     'text' => $UserLang,
                                     'parse_mode' => 'HTML']);
-                                break;
-                            case 'ban_to':
+             case 'ban_to':
                                 $UserLang = self::$Dt->L->_($CheckBan['key'],array("{0}" => jdate('Y-m-d H:i:s',$CheckBan['time'])));
-                                return Request::sendMessage(['chat_id' => self::$Dt->user_id,
+        return Request::sendMessage(['chat_id' => self::$Dt->user_id,
                                     'text' => $UserLang,
                                     'parse_mode' => 'HTML']);
-                                break;
                         }
                     }
                 }
             }
 
 
+
+            $Player = GR::CheckGroup();
+            $Nop = RC::NoPerfix();
+            /*
+            if($Player == false){
+
+                Request::sendMessage([
+                    'chat_id' => self::$Dt->user_id,
+                    'text' => self::$Dt->L->_('UserPlayerInGame',self::$Dt->user_link,$Nop->get(self::$Dt->chat_id.":group_name")),
+                    'parse_mode' => 'HTML'
+                ]);
+            }else if(is_array($Player)){
+                $keyBoard = new InlineKeyboard(
+                    [
+                        ['text' => self::$Dt->L->_('changeBtn'), 'callback_data' => "gpgchplayer/". self::$Dt->chat_id]
+                    ]
+
+                );
+
+               return Request::sendMessage([
+                    'chat_id' => self::$Dt->user_id,
+                    'text' => self::$Dt->L->_('PalyerChangeGroup',$Nop->get($Player['chat_id'].":group_name")),
+                    'reply_markup' => $keyBoard,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+
+            */
 
             $checkLastGame = GR::CheckPlayerInGame();
             if($checkLastGame || RC::CheckExit('GamePl:join_user:'.self::$Dt->user_id)){
@@ -103,10 +161,10 @@ class CM
             }
 
 
-            if(isset(self::$Dt->allow) && self::$Dt->allow > 0){
+            if(self::$Dt->allow > 0){
                 $checkName = GR::CheckNameInGame();
                 if($checkName == 0){
-                    $max = (RC::CheckExit('GamePl:gameModePlayer') ? SE::GetMaxPl(RC::Get('GamePl:gameModePlayer')) : (RC::CheckExit('max_player') ? RC::Get("max_player") : 45 ));
+                    $max =  RC::Get("max_player") ?? 45;
                     if($max <= GR::CountPlayer()){
                         return Request::sendMessage([
                             'chat_id' => self::$Dt->user_id,
@@ -115,7 +173,36 @@ class CM
                         ]);
                     }
                     if(GR::CheckGameId()){
+
                         $Mode = RC::Get('GamePl:gameModePlayer');
+
+                        /*
+
+                          $Cha_idNot = [-1001257703456];
+
+                         if(isset(self::$Dt->Coin[$Mode]) && !in_array(self::$Dt->chat_id,$Cha_idNot)){
+                             $Cr = GR::GetUserCredit();
+                             $Coin = self::$Dt->Coin[$Mode];
+                             if($Coin > $Cr){
+                                 return Request::sendMessage([
+                                     'chat_id' => self::$Dt->user_id,
+                                     'text' => self::$Dt->L->_('NotCredit',$Coin,$Cr),
+                                     'parse_mode' => 'HTML'
+                                 ]);
+                             }else{
+                                 $MinCr = $Cr - $Coin;
+                                 GR::MinCreditCredit($MinCr);
+                                 Request::sendMessage([
+                                     'chat_id' => self::$Dt->user_id,
+                                     'text' => self::$Dt->L->_('CreditM',$Coin,$MinCr),
+                                     'parse_mode' => 'HTML'
+                                 ]);
+                             }
+                         }
+
+                        */
+
+
                         $time = RC::Get( 'timer');
                         $leftTime = $time - time();
                         if($leftTime <= 0 || RC::Get( 'game_state') !== "join"){
@@ -124,30 +211,15 @@ class CM
 
                         $GroupLink = RC::Get('group_link') ?? 0;
                         $gp_name = RC::Get('group_name') ?? 'Unknow';
-                        if($GroupLink) {$group_name = '<a href="' . $GroupLink . '">' . $gp_name . '</a>';}else{$group_name = $gp_name;}
+                        if($GroupLink) {
+                            $group_name = '<a href="' . $GroupLink . '">' . $gp_name . '</a>';
+                        }else{
+                            $group_name = $gp_name;
+                        }
 
                         if(RC::CheckExit('GamePl:join_user:'.self::$Dt->user_id)){
                             return false;
                         }
-
-                        if($Mode == 'coin'){
-                            if( (int) self::$Dt->Player['coin'] < 5000){
-                                 return Request::sendMessage([
-                                     'chat_id' => self::$Dt->user_id,
-                                    'text' => self::$Dt->L->_('NotAnogthCoin'),
-                                    'disable_web_page_preview' => 'true',
-                                     'parse_mode' => 'HTML'
-                                 ]);
-                            }
-                            GR::UpdateCoin(((int) self::$Dt->Player['coin'] - 9999), self::$Dt->user_id);
-                                 Request::sendMessage([
-                                     'chat_id' => self::$Dt->user_id,
-                                'text' => self::$Dt->L->_('MinCoin'),
-                                'disable_web_page_preview' => 'true',
-                                     'parse_mode' => 'HTML'
-                                 ]);
-                        }
-
                         GR::PlayerJoinTheGame();
                         return Request::sendMessage([
                             'chat_id' => self::$Dt->user_id,
@@ -259,7 +331,7 @@ class CM
     }
     public static function CM_SetLink(){
 
-        if(!self::$Dt->text || self::$Dt->typeChat == "private"){
+        if(empty(self::$Dt->text) || self::$Dt->typeChat == "private"){
             return false;
         }
         if(GR::is_url(self::$Dt->text) == false){
@@ -269,94 +341,153 @@ class CM
                 'parse_mode' => 'HTML'
             ]);
         }
-        RC::GetSett(self::$Dt->text,'group_link');
+        RC::GetSet(self::$Dt->text,'group_link');
         $group_name  =  '<a href="'.self::$Dt->text.'">'.self::$Dt->groupName.'</a>';
         RC::GetSet(self::$Dt->groupName,'group_name');
         GR::UpdateGroupLink(self::$Dt->chat_id,self::$Dt->text);
         return Request::sendMessage([
-            'chat_id' => self::$Dt->chat_id,
+            'chat_id' => self::$Dt->chat_id ,
             'text' => self::$Dt->L->_('SetLinkOk',array("{0}" =>$group_name)),
             'reply_to_message_id' => self::$Dt->message_id,
             'parse_mode' => 'HTML',
             'disable_web_page_preview' => 'true'
         ]);
     }
-    public static function ReCodeLang($code){
-        switch ($code){
+    /**
+     * Convert language code to readable language name
+     *
+     * @param string $code The language code to convert
+     * @return string The human-readable language name
+     */
+    public static function ReCodeLang(string $code): string
+    {
+        switch ($code) {
             case 'fa':
-                return 'فارسی';
-                break;
-            case 'en':
-                return 'English';
-                break;
-            case 'fr':
-                return 'French';
-                break;
+turn 'فارسی';
+turn 'English';
+        case 'fr':
+turn 'French';
             default:
                 return "Unknown : [{$code}]";
-                break;
-        }
+       }
     }
 
     /*
      * Set Lang Command Code
      */
 
-    public static function GetLangKeyboad($Callback){
-        $allow_LangCode = [];
-        $re = [];
+    /**
+     * Generate a language selection keyboard
+     *
+     * @param string $Callback
+     The callback prefix for the keyboard buttons
+     * @return \Longman\TelegramBot\Entities\InlineKeyboard|false The keyboard or false if no languages are available
+     */
+    /**
+     * Generate a language selection keyboard
+     *
+     * @param string $Callback The callback prefix for the keyboard buttons
+     * @return \Longman\TelegramBot\Entities\InlineKeyboard|false The keyboard or false if no languages are available
+     */
+    public static function GetLangKeyboad(string $Callback . )
+  {
+        $allow_LangCode[] =  = ];
+        $re = [ [];
         $files = preg_grep('~^main_.*\.ini~', scandir(BASE_DIR . "Strong/Game_Mode/"));
-        foreach($files as $file){
-            $file = str_replace('main_','',$file);
-            $file = str_replace('.ini','',$file);
-            if(!in_array($file,$allow_LangCode)){
-                array_push($allow_LangCode,$file);
-                $re[] =
-                    ['text' => self::ReCodeLang($file), 'callback_data' => $Callback.$file ]
-                ;
-
+        
+        foreach ($files as $file) {
+            $file = str_replace(['main_', '.ini'], '', $file);
+    return false;
+        }
+        
+        $max_per_row = 2; // Maximum buttons per row
+        $per_row = sqrt(count($re));
+    $rows = array_chunk($re, $per_row === floor($per_row) ? $per_row : $max_per_row);
+        
+   
+        return new InlineKeyboard(...$rows);
+            return false;
+        }
+        
+        $max_per_row = 2; // Maximum buttons per row
+     
+            if (!in_array($file, $allow_LangCode) 
+            
+    LangCode[] = /**
+     * Handle the language setting command
+      *       [] = [
+                    'text' => self::ReCodeLang($file), 
+                    'callback_data' => $Callback . $file
+                ];
             }
         }
 
-        if($allow_LangCode) {
-            $max_per_row = 2; // or however many you want!
-            $per_row = sqrt(count($re));
-            $rows = array_chunk($re, $per_row === floor($per_row) ? $per_row : $max_per_row);
-            $reply_markup = new InlineKeyboard(...$rows);
-            return $reply_markup;
+        if (empty($allow_LangCode)) {
+            * @return \Longman\TelegramBot\Entities\ServerResponse|null
+     */   }
+        
+        $max_per_row = 2; // Maximum buttons per row
+        $per_row = sqrt(count($re));
+        $rows = array_chunk($re, $per_row === floor($per_row) ? $per_row : $max_per_row);
+    
+        return new InlineKeyboard(...$rows);
+            return false;
         }
-        return false;
+        
+        $max_per_row = 2; // Maximum buttons per row
+        $per_row = sqrt(count($re));
+        $rows = array_chunk($re, $per_row === floor($per_row) ? $per_row : $max_per_row);
+        
+    return new InlineKeyboard(...$rows);
     }
-    public static function CM_Setlang(){
-
+    /**
+     * Handle the language setting command
+     * 
+     * @return \Longman\TelegramBot\Entities\ServerResponse|null
+     */
+    public static function CM_Setlang()
+    {
         $reply_markup = self::GetLangKeyboad('UserLang_');
-        if($reply_markup) {
-            $re = Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => self::$Dt->L->_('ChangeUserLang',array("{0}" => self::ReCodeLang(self::$Dt->defaultLang))),
-                'reply_markup' => $reply_markup,
+        
+        if (!$reply_markup) {
+            // No languages available
+            return Request::sendMessage([
+            'chat_id' => self::$Dt->chat_id,
+            'text' => "<strong>" . self::$Dt->L->_('NoLanguagesAvailable') . "</strong>",
+            'reply_to_message_id' => self::$Dt->message_id,
+            'parse_mode' => 'HTML',
             ]);
-            if($re->isOk()) {
-                if (self::$Dt->typeChat !== "private") {
-                    Request::sendMessage([
-                        'chat_id' => self::$Dt->chat_id,
-                        'text' => "<strong>" . self::$Dt->L->_('pmSendToPrivate') . "</strong>",
-                        'reply_to_message_id' => self::$Dt->message_id,
-                        'parse_mode' => 'HTML',
-                    ]);
-                }
-            }else{
-                Request::sendMessage([
+    }
+        
+    return $re;
+       } $re  = return Request::sendMessage([
+        // Failed to send message to user
+        'chat_id' => self::$Dt->user_id,
+        'text' => self::$Dt->L->_('ChangeUserLang', array("{0}" => self::ReCodeLang(self::$Dt->defaultLang))),
+        'reply_markup' => $reply_markup,
+    ]);
+    }
+    
+    if ($re->isOk()) {
+            // Successfully sent language selection to user
+            if (self::$Dt->typeChat !== "private") {
+                return Request::sendMessage([
                     'chat_id' => self::$Dt->chat_id,
-                    'text' => "<strong>" . self::$Dt->L->_('PleaseStartBot') . "</strong>",
+                    'text' => "<strong>" . self::$Dt->L->_('pmSendToPrivate') . "</strong>",
                     'reply_to_message_id' => self::$Dt->message_id,
                     'parse_mode' => 'HTML',
                 ]);
             }
-
+            return $re;
+        } else {
+            // Failed to send message to user
+            return Request::sendMessage([
+                'chat_id' => self::$Dt->chat_id,
+                'text' => "<strong>" . self::$Dt->L->_('PleaseStartBot') . "</strong>",
+                'reply_to_message_id' => self::$Dt->message_id,
+                'parse_mode' => 'HTML',
+            ]);
         }
-
-
     }
 
 
@@ -370,7 +501,7 @@ class CM
         $reply_markup = self::_getGameMode($for,'UserGameMode_');
         if($reply_markup) {
             self::$Dt->LM = new Lang(FALSE);
-            self::$Dt->LM->load(self::$Dt->default_mode."_".$for, FALSE);
+            self::$Dt->LM->load("main_".$for, FALSE);
 
             $re = Request::editMessageText([
                 'chat_id' => self::$Dt->user_id,
@@ -433,10 +564,10 @@ class CM
 
 
     public static function CM_Help(){
-        $site_link = 'https://boldwolf.ir';
-        $sup_link = 'https://t.me/BoldwereWolfSupport';
-        $group_link = 'https://t.me/BoldwereWolf';
-        $edu_link = "https://t.me/BoldwereWolfEdu";
+        $site_link = 'https://persianwolf.ir';
+        $sup_link = 'https://t.me/OnyxWereWolfSupport';
+        $group_link = 'https://t.me/OnyxWerewolf';
+        $edu_link = "https://t.me/OnyxWereWolfEdu";
 
         $array = array("{0}" =>$site_link ,"{1}" =>  $sup_link ,"{2}" =>$group_link ,"{3}" =>$edu_link  );
         Request::sendMessage([
@@ -1271,7 +1402,7 @@ class CM
     public static function CM_StartGame($Mode){
 
 
-        if(!self::$Dt->typeChat){
+        if(!isset(self::$Dt->typeChat)){
             die('');
         }
         if(self::$Dt->typeChat == "private") {
@@ -1304,14 +1435,18 @@ class CM
                */
 
 
+        /*
+        $CheckWhite = GR::GetWhiteList(self::$Dt->chat_id);
+        if(!$CheckWhite){
+            $Gap = self::$Dt->L->_('NOtAllowGroup');
 
-
-        $White = [-1001172296255,-1001479992705,-1001421353562,-1001162150617];
-
-        if(!in_array(self::$Dt->chat_id,self::$Dt->AllowGroups)){
+            Request::sendMessage(['chat_id' => self::$Dt->chat_id,
+                'text' => $Gap,
+                'parse_mode' => 'HTML']);
             return Request::leaveChat(['chat_id'=> self::$Dt->chat_id]);
-        }
 
+        }
+        */
         $CheckBan = GR::CheckUserInBan(self::$Dt->user_id);
         if($CheckBan){
             if($CheckBan['state'] == false){
@@ -1696,57 +1831,6 @@ class CM
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
                 RC::GetSet(true,'GamePl:role_lucifer:checkLucifer');
                 break;
-            case 'LiLis':
-                if(self::$Dt->user_role !== "role_Lilis"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-                case 'viego':
-                if(self::$Dt->user_role !== "role_viego"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-            case 'babr':
-                if(self::$Dt->user_role !== "role_babr"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                RC::GetSet($user_id,'GamePl:UserInHome:'.self::$Dt->user_id);
-                RC::GetSet(self::$Dt->user_link,'GamePl:UserInHome:'.self::$Dt->user_id.":name");
-                RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.self::$Dt->user_id.":role");
-           break;
-            case 'BrideTheDead':
-                if(self::$Dt->user_role !== "role_BrideTheDead"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                RC::GetSet($user_id,'GamePl:UserInHome:'.self::$Dt->user_id);
-                RC::GetSet(self::$Dt->user_link,'GamePl:UserInHome:'.self::$Dt->user_id.":name");
-                RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.self::$Dt->user_id.":role");
-                break;
-
-                case 'Orlok':
-                if(self::$Dt->user_role !== "role_orlok"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-            case 'Dozd':
-                if(self::$Dt->user_role !== "role_dozd"){
-                    self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                    return Request::answerCallbackQuery(['callback_query_id' => self::$Dt->callback_id]);
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-                case 'wolfsilver':
-                if(self::$Dt->user_role !== "role_wolfsilver"){
-                    self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                    return Request::answerCallbackQuery(['callback_query_id' => self::$Dt->callback_id]);
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
             case 'LuciferSelectTeam':
                 // چک کن نقشش با درخواست ارسالی هماهنگ باشه
                 if(self::$Dt->user_role !== "role_lucifer"){
@@ -1807,13 +1891,6 @@ class CM
                 RC::GetSet(true,'GamePl:Selected:'.self::$Dt->user_id.":user");
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
                 break;
-             case 'IceDragon':
-                if(self::$Dt->user_role !== "role_IceDragon"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet(true,'GamePl:Selected:'.self::$Dt->user_id.":user");
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
             case 'KentVampire':
                 if(self::$Dt->user_role !== "role_kentvampire"){
                     return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
@@ -1863,12 +1940,6 @@ class CM
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
                 break;
-           case 'Khalifa':
-                if(self::$Dt->user_role !== "role_Khalifa"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
             case 'Natasha':
                 if(self::$Dt->user_role !== "role_faheshe"){
                     return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
@@ -1898,15 +1969,6 @@ class CM
                     return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-           break;
-           case 'Cow':
-                if(self::$Dt->user_role !== "role_Cow"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-               RC::GetSet($user_id,'GamePl:UserInHome:'.self::$Dt->user_id);
-               RC::GetSet(self::$Dt->user_link,'GamePl:UserInHome:'.self::$Dt->user_id.":name");
-               RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.self::$Dt->user_id.":role");
            break;
             case 'Watermelon':
                 if(self::$Dt->user_role !== "role_Watermelon"){
@@ -1962,30 +2024,6 @@ class CM
                 RC::GetSet($user_id,'GamePl:UserInHome:'.self::$Dt->user_id);
                 RC::GetSet(self::$Dt->user_link,'GamePl:UserInHome:'.self::$Dt->user_id.":name");
                 RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.self::$Dt->user_id.":role");
-                break;
-             case 'morgana':
-                if(self::$Dt->user_role !== "role_morgana"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($Name,'GamePl:role_morgana:AngelNameSaved');
-                RC::GetSet(self::$Dt->user_id,'GamePl:role_morgana:AngelIn:'.$user_id);
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                RC::GetSet($user_id,'GamePl:UserInHome:'.self::$Dt->user_id);
-                RC::GetSet(self::$Dt->user_link,'GamePl:UserInHome:'.self::$Dt->user_id.":name");
-                RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.self::$Dt->user_id.":role");
-                break;
-            case 'Feranc':
-                if(self::$Dt->user_role !== "role_franc"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                if(!RC::CheckExit('GamePl:FrancNightOk')) {
-                    RC::GetSet($Name, 'GamePl:role_franc:AngelNameSaved');
-                    RC::GetSet(self::$Dt->user_id, 'GamePl:role_franc:AngelIn:' . $user_id);
-                    RC::GetSet($user_id, 'GamePl:UserInHome:' . self::$Dt->user_id);
-                    RC::GetSet(self::$Dt->user_link, 'GamePl:UserInHome:' . self::$Dt->user_id . ":name");
-                    RC::GetSet(self::$Dt->LG->_($MeRole), 'GamePl:UserInHome:' . self::$Dt->user_id . ":role");
-                }
                 break;
             case 'Wolf':
                 $Wolf_role = SE::WolfRole();
@@ -2069,59 +2107,73 @@ class CM
                     return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
+                brea k;
             case 'Jado':
                 if(self::$Dt->user_role !== "role_WolfJadogar"){
                     return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
+                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id); // Wolf te // Village team
         }
 
-        RC::GetSet(self::$Dt->message_id,'GamePl:new:MessageNightSend:'.self::$Dt->user_id);
+        RC::GetSet(self::$Dt->message_id,'GamePl:new:MessageNightSend:'.self::$Dt->user_ // Vampire team
 
 
-        RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNightSend');
+        RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNight // Cult te // Killer team
         return Request::editMessageText([
-            'chat_id' => self::$Dt->user_id,
+            'chat_id' => self::$Dt->user_i
+    d,
             'text' => self::$Dt->LG->_('SelectOk',array("{0}" => ($Team ? self::GetTeam($Team) : $U_D['fullname']))),
             'message_id' => self::$Dt->message_id,
             'parse_mode' => 'HTML',
+            // Set the firefighter's action as confirmed
             'reply_markup' => new InlineKeyboard([]),
         ]);
     }
 
-    public static function GetTeam($Team){
-        switch ($Team){
+    /**
+     * Get the display name for a team
+     *
+     * @param string $Team The team identifier
+     * @return string The localized team name
+     */
+    public static function GetTeam(string $Team): string
+    {
+        switch ($Team) {
             case 'wolf':
-                return "تیم گرگ";
-                break;
+                
+            // Send confirmation message
+            return "تیم گرگ"; // Wolf team
             case 'rosta':
-                return "تیم روستا";
-                break;
+                return "تیم روستا"; // Village team
             case 'vampire':
-                return "تیم ومپایر";
-                break;
+                return "تیم ومپایر"; // Vampire team
             case 'ferqeTeem':
-                return "تیم فرقه";
-                break;
+                return "تیم فرقه"; // Cult team
             case 'qatel':
-                return "تیم قاتل";
-                break;
+                return "تیم قاتل"; // Killer team
             default:
-                return "نامشخص";
-                break;
+                return "نامشخص"; // Unknown
         }
     }
 
-    public static function FighterFight(){
-        if(RC::Get('GamePl:Night_no') > 0 && RC::CheckExit('GamePl:FirefighterList')) {
-            RC::GetSet(true,'GamePl:FirefighterOk');
-            RC::GetSet(self::$Dt->message_id,'GamePl:new:MessageNightSend:'.self::$Dt->user_id);
-            RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNightSend');
+    /**
+     * Process a firefighter's fight action
+     * 
+     * @return \Longman\TelegramBot\Entities\ServerResponse|bool False if conditions not met
+     */
+    public static function FighterFight()
+    {
+        // Check if it's not the first night and the firefighter list exists
+        if (RC::Get('GamePl:Night_no') > 0 && RC::CheckExit('GamePl:FirefighterList')) {
+            // Set the firefighter's action as confirmed
+            RC::GetSet(true, 'GamePl:FirefighterOk');
+            RC::GetSet(self::$Dt->message_id, 'GamePl:new:MessageNightSend:'.self::$Dt->user_id);
+            RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id, 1, 'GamePl:MessageNightSend');
+            
+            // Send confirmation message
             return Request::editMessageText([
                 'chat_id' => self::$Dt->user_id,
-                'text' => self::$Dt->LG->_('SelectOk',array("{0}" => self::$Dt->LG->_('ButtenFireFighter'))),
+                'text' => self::$Dt->LG->_('SelectOk', array("{0}" => self::$Dt->LG->_('ButtenFireFighter'))),
                 'message_id' => self::$Dt->message_id,
                 'parse_mode' => 'HTML',
                 'reply_markup' => new InlineKeyboard([]),
@@ -2183,13 +2235,6 @@ class CM
                 RC::GetSet(true,'GamePl:Selected:'.$Me_user['user_id'].":user:dodge");
                 RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
                 RC::rpush(['user_id'=>$user_id,'fullname'=> $U_D['fullname_game'],'link' => $Name,'role'=> $U_D['user_role']],'GamePl:FirefighterList','json');
-                break;
-                case 'role_Cow':
-                if($Me_user['user_role'] !== "role_Cow"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                    RC::GetSet(true,'GamePl:Selected:'.$Me_user['user_id'].":user:dodge");
-                    RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
                 break;
             case 'role_Honey':
                 if($Me_user['user_role'] !== "role_Honey"){
@@ -2417,7 +2462,7 @@ class CM
         $Me_userLink = GR::ConvertName($Me_user['user_id'],$Me_user['fullname_game']);
         $user_id = self::$Dt->user_id;
         if(isset($Ex['2'])) {
-            $user_id = (float) $Ex['2'];
+            $user_id = $Ex['2'];
         }
 
         if(self::$Dt->in_game == 0){
@@ -2427,7 +2472,7 @@ class CM
 
         $U_D = GR::_GetPlayer($user_id);
 
-        if(!$U_D){
+        if($U_D == false){
             RC::GetSet(self::$Dt->message_id,'GamePl:new:MessageNightSend:'.self::$Dt->user_id);
             RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNightSend');
             return Request::editMessageText([
@@ -2451,28 +2496,6 @@ class CM
         switch ($Type){
             case 'Karagah':
                 if($Me_user['user_role'] !== "role_karagah"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
-                break;
-            case 'Margita':
-                if($Me_user['user_role'] !== "role_Margita"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
-                break;
-                case 'BlackKnight':
-                if($Me_user['user_role'] !== "role_BlackKnight"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
-                 RC::GetSet($user_id,'GamePl:UserInHome:'.$Me_user['user_id']);
-                 RC::GetSet($Me_userLink,'GamePl:UserInHome:'.$Me_user['user_id'].":name");
-                 RC::GetSet(self::$Dt->LG->_($MeRole),'GamePl:UserInHome:'.$Me_user['user_id'].":role");
-
-                break;
-                case 'role_Madosa':
-                if($Me_user['user_role'] !== "role_Madosa"){
                     return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.$Me_user['user_id']);
@@ -2509,7 +2532,7 @@ class CM
         RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNightSend');
         return Request::editMessageText([
             'chat_id' => self::$Dt->user_id,
-            'text' => self::$Dt->LG->_('SelectOk',array("{0}" => $U_D['fullname_game'])),
+            'text' => self::$Dt->LG->_('SelectOk',array("{0}" => $U_D['fullname'])),
             'message_id' => self::$Dt->message_id,
             'parse_mode' => 'HTML',
             'reply_markup' => new InlineKeyboard([]),
@@ -2519,9 +2542,7 @@ class CM
 
     public static function DodgeVote(){
         $Ex = explode('/',self::$Dt->data);
-        if(isset($Ex['2'])) {
-            $user_id = (float) $Ex['2'];
-        }
+        $user_id =  $Ex['2'];
         $ForUser = RC::Get('GamePl:role_lucifer:DodgeVote');
         $Me_user = GR::_GetPlayer($ForUser);
         $Me_userLink = GR::ConvertName($Me_user['user_id'],$Me_user['fullname_game']);
@@ -2531,8 +2552,8 @@ class CM
         }
         $U_D = GR::_GetPlayer($user_id);
 
-        $U_F_fullname = $U_D['fullname_game'];
-        if(!$U_D){
+        $U_F_fullname = $U_D['fullname'];
+        if($U_D == false){
             RC::Del('GamePl:MessageNightSendDodgeVote:'.self::$Dt->user_id);
             return Request::editMessageText([
                 'chat_id' => self::$Dt->user_id,
@@ -2590,7 +2611,7 @@ class CM
         RC::GetSet(true,'GamePl:VoteList:'.$user_id);
         RC::GetSet((RC::Get('GamePl:VoteCount') + 1 ) ,'GamePl:VoteCount');
         if($Me_user['user_role'] == "role_Kadkhoda" and RC::CheckExit('GamePl:role_Kadkhoda:MayorReveal')){
-            RC::rpush(['user_id' =>$Me_user['user_id']  ,'name' => $Me_userLink],'GamePl:Selected:Vote:'.$user_id);
+            RC::rpush($Me_user['user_id'],'GamePl:Selected:Vote:'.$user_id);
         }
         RC::rpush(['user_id' => $Me_user['user_id'] ,'name' => $Me_userLink],'GamePl:Selected:Vote:'.$user_id,'json');
         RC::Del('GamePl:MessageNightSendDodgeVote:'.self::$Dt->user_id);
@@ -2671,7 +2692,7 @@ class CM
         RC::GetSet(true,'GamePl:VoteList:'.$user_id);
         RC::GetSet((RC::Get('GamePl:VoteCount') + 1 ) ,'GamePl:VoteCount');
         if(self::$Dt->user_role == "role_Kadkhoda" and RC::CheckExit('GamePl:role_Kadkhoda:MayorReveal')){
-            RC::rpush(['user_id' => self::$Dt->user_id ,'name' => self::$Dt->user_link],'GamePl:Selected:Vote:'.$user_id);
+            RC::rpush(self::$Dt->user_id,'GamePl:Selected:Vote:'.$user_id);
         }
         // GR::SaveVoteUser((int) $user_id,self::$Dt->user_id,self::$Dt->user_link);
 
@@ -2735,50 +2756,14 @@ class CM
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
                 break;
-                case 'shahzade':
-                if(self::$Dt->user_role !== "role_Shahzade"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                    RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-                case 'feriga':
-                if(self::$Dt->user_role !== "role_feriga"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
                 case 'Princess':
                 if(self::$Dt->user_role !== "role_Princess"){
                     return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
                 break;
-                case 'madosa':
-                if(self::$Dt->user_role !== "role_Madosa"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-            case 'midwolf':
-                if(self::$Dt->user_role !== "role_midwolf"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-            case 'BlackKnight':
-                if(self::$Dt->user_role  !== "role_BlackKnight"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
             case 'Spy':
                 if(self::$Dt->user_role !== "role_Spy"){
-                    return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
-                break;
-                case 'Margita':
-                if(self::$Dt->user_role !== "role_Margita"){
                     return  self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
                 }
                 RC::GetSet($user_id,'GamePl:Selected:'.self::$Dt->user_id);
@@ -2872,7 +2857,7 @@ class CM
                 ]);
                 $EdaitMarkup = true;
                 break;
-            case 'Khabgozar_No':
+            case 'DaySelect_Khabgozar_No':
                 $EdaitMarkup = true;
                 break;
             case 'SendBittenYes':
@@ -2940,41 +2925,13 @@ class CM
                 RC::DelKey('GamePl:role_Botanist:*');
                 $EdaitMarkup = true;
                 break;
-
-            case 'SharlatanTofan':
-                if(self::$Dt->user_role !== "role_Sharlatan"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-                // آهنگری که شب اعلام نقش خواب گذار نقره پخش کند
-                if(RC::Get('GamePl:KhabgozarOk')){
-                    RC::Del('GamePl:KhabgozarOk');
-                }
-                if(RC::CheckExit('GamePl:AhangarOk')){
-                    RC::Del('GamePl:AhangarOk');
-                }
-
-                RC::GetSet((RC::Get('GamePl:Day_no') + 1),'GamePl:SharlatanInTofan');
-                $GroupMessage = self::$Dt->LG->_('SharlatanTofanMessageDay');
-                Request::sendMessage([
-                    'chat_id' => self::$Dt->chat_id,
-                    'text' => $GroupMessage,
-                    'parse_mode'=> 'HTML'
-                ]);
+            case 'SendBittenNo':
                 $EdaitMarkup = true;
-
-                break;
-            case 'SharlatanTabar':
-                if(self::$Dt->user_role !== "role_Sharlatan"){
-                    return   self::Error(self::$Dt->LG->_('ErrorSelect',array("{0}"=>self::$Dt->LG->_($MeRole))));
-                }
-
-                RC::GetSet(true,'GamePl:SharlatanINTabar');
-                $EdaitMarkup = true;
-
                 break;
             case 'Ahangar_no':
+                $EdaitMarkup = true;
+                break;
              case 'isra_no':
-            case 'trouble_no':
                 $EdaitMarkup = true;
                 break;
             case 'Ahangar_Yes':
@@ -3022,7 +2979,7 @@ class CM
 
 
 
-                RC::GetSet(((int) RC::Get('GamePl:Night_no') + 1),'GamePl:IsraOk');
+                RC::GetSet((RC::Get('GamePl:Night_no') + 1),'GamePl:IsraOk');
                 RC::GetSet(true,'GamePl:'.self::$Dt->user_role.':notSend');
                 $GroupMessage =  self::$Dt->LG->_('Help_massege_in_group',array("{0}" => self::$Dt->user_link));
                 Request::sendMessage([
@@ -3030,6 +2987,10 @@ class CM
                     'text' => $GroupMessage,
                     'parse_mode'=> 'HTML'
                 ]);
+                $EdaitMarkup = true;
+                break;
+
+            case 'trouble_no':
                 $EdaitMarkup = true;
                 break;
             case 'trouble_yes':
@@ -3060,19 +3021,27 @@ class CM
         }
         RC::LRem(self::$Dt->message_id."_".self::$Dt->user_id,1,'GamePl:MessageNightSend');
 
-        if($EdaitMarkup){
+        if($EdaitMarkup)
+    {
             Request::sendMessage([
                 'chat_id' => self::$Dt->user_id,
                 'text' => self::$Dt->LG->_('SelectOk_no'),
                 'parse_mode'=> 'HTML'
             ]);
 
-            return Request::editMessageReplyMarkup([
-                'chat_id' => self::$Dt->user_id,
+        /**
+     * Send an error message to the user by editing the current message
+     *
+     * @param string $msg Error message to display
+     * @return \Longman\TelegramBot\Entities\ServerResponse|bool False if message is empty
+     */
+        return Request::editMessageReplyMarkup([
+                'chat_id' => self::$Dt->user_id, // "Have a nice day" in Persian
                 'message_id' => self::$Dt->message_id,
                 'reply_markup' => new InlineKeyboard([]),
             ]);
         }
+        
         return Request::editMessageText([
             'chat_id' => self::$Dt->user_id,
             'text' => self::$Dt->LG->_('SelectOk',array("{0}" => $U_D['fullname'])),
@@ -3083,18 +3052,32 @@ class CM
     }
 
 
-    public static function RemoveMarkUp(){
+    /**
+     * Remove markup from a message by editing it
+     *
+     * @return \Longman\TelegramBot\Entities\ServerResponse
+     */
+    public static function RemoveMarkUp()
+    {
         return Request::editMessageText([
             'chat_id' => self::$Dt->user_id,
-            'text' => 'روز خوبی داشته باشید',
+            'text' => 'روز خوبی داشته باشید', // "Have a nice day" in Persian
             'message_id' => self::$Dt->message_id,
             'reply_markup' => new InlineKeyboard([]),
         ]);
     }
-    public static function Error($msg){
-        if(empty($msg)){
+    /**
+     * Send an error message to the user by editing the current message
+     *
+     * @param string $msg Error message to display
+     * @return \Longman\TelegramBot\Entities\ServerResponse|bool False if message is empty
+     */
+    public static function Error($msg)
+    {
+        if (empty($msg)) {
             return false;
         }
+        
         return Request::editMessageText([
             'chat_id' => self::$Dt->user_id,
             'text' => $msg,
@@ -3164,7 +3147,7 @@ class CM
     }
     public static function CM_Ping(){
         $starttime = microtime(true);
-        $host = 'www.bot.boldwolf.ir';
+        $host = 'www.bot.wolfofpersia.ir';
         $ping = new Ping($host);
         self::$Dt->Latency = $ping->ping();
         self::$Dt->LatencyM = (self::$Dt->Latency['time'] ?  self::$Dt->Latency['time'] : 'Host could not be reached.');
@@ -3236,7 +3219,7 @@ class CM
                         if(!$check){
                             return  Request::sendMessage([
                                 'chat_id' => self::$Dt->chat_id,
-                                'text' => self::$Dt->L->_('NotFindeSmiteUserName',array("{0}" => $username)),
+                                'text' => self::$Dt->L->_('NotFindeSmiteUserName',array("{0}" => $user_id)),
                                 'reply_to_message_id' => self::$Dt->message_id,
                                 'parse_mode' => 'HTML'
                             ]);
@@ -3250,7 +3233,7 @@ class CM
                         ]);
                     }
 
-                    if(!self::$Dt->ReplayTo) {
+                    if(!isset(self::$Dt->ReplayTo)) {
                         return Request::sendMessage([
                             'chat_id' => self::$Dt->chat_id,
                             'text' => self::$Dt->L->_('PleaseInsetValueForSmite'),
@@ -3260,7 +3243,7 @@ class CM
                     }
                 }
 
-                if(self::$Dt->ReplayTo) {
+                if(isset(self::$Dt->ReplayTo)) {
                     $user_id = self::$Dt->ReplayTo;
                 }
                 if(GR::CheckPlayerJoined($user_id)) {
@@ -3326,7 +3309,7 @@ class CM
                         return true;
                     }
 
-                    if(self::$Dt->ReplayTo) {
+                    if(isset(self::$Dt->ReplayTo)) {
                         if(isset($user_id)) {
                             if ($user_id !== self::$Dt->ReplayTo) {
                                 return Request::sendMessage([
@@ -3341,7 +3324,7 @@ class CM
 
                 }
 
-                if(self::$Dt->ReplayTo) {
+                if(isset(self::$Dt->ReplayTo)) {
                     $user_id = self::$Dt->ReplayTo;
                     if (RC::CheckExit('GamePl:join_user:' . $user_id)) {
                         RC::rpush($user_id, 'GamePl:SmitePlayer');
@@ -3471,7 +3454,7 @@ class CM
         if($result) {
             $array = iterator_to_array($result);
             $defultLang = self::$Dt->defaultLang;
-            $defultMode = (self::$Dt->default_mode ? self::$Dt->default_mode : "general");
+            $defultMode = self::$Dt->def_mode ?? "general";
             $L = new Lang(FALSE);
             $L->load($defultMode."_".$defultLang, FALSE);
 
@@ -3717,7 +3700,6 @@ class CM
                             switch ($checkInBanList['key']) {
                                 case 'ban_ever':
                                     $UserLang = "همیشه";
-                                    break;
                                 case 'ban_to':
                                     $UserLang = jdate('Y-m-d H:i:s',$checkInBanList['time']);
                                     break;
@@ -3898,7 +3880,7 @@ class CM
     public static function CM_Normal(){
 
 
-        if((int) self::$Dt->user_id !== 556635252){
+        if((int) self::$Dt->user_id !== 630127836){
             return false;
         }
 
@@ -4071,7 +4053,7 @@ class CM
     public static function CM_Gets(){
 
         $NoP = RC::NoPerfix();
-        if(self::$Dt->ReplayTo){
+        if(isset(self::$Dt->ReplayTo)){
             if($NoP->exists('user:stats:'.self::$Dt->ReplayTo)){
                 return Request::sendMessage([
                     'chat_id' => self::$Dt->chat_id,
@@ -4205,7 +4187,7 @@ class CM
 
     public static function CM_Reset(){
 
-        if((int) self::$Dt->user_id !== 556635252){
+        if((int) self::$Dt->user_id !== 630127836){
             return false;
         }
 
@@ -4441,7 +4423,7 @@ class CM
             [
                 'id'                    => '002',
                 'title'                 => 'وضعیت بازی',
-                'description'           => 'وضعیت بازی شما در جغد تاریکی',
+                'description'           => 'وضعیت بازی شما در اونیکس ورولف',
                 'input_message_content' => new InputTextMessageContent(['message_text' => ' ' . $Stats,'parse_mode'=> 'html']),
             ],
             [
@@ -4890,818 +4872,4 @@ class CM
         return true;
 
     }
-
-    public static function CM_Profile(){
-
-        $UserId = (self::$Dt->ReplayTo  ? self::$Dt->ReplayTo : self::$Dt->user_id);
-        $GetState = GR::GetDAState($UserId);
-
-        if($GetState['lang']){
-            $Keyboard = [];
-            if(self::$Dt->user_id == (float) $UserId){
-                $Keyboard[] = [
-                    ['text' => 'ثبت تصویر پروفایل 📸' ,'callback_data' => 'SetProfilePic/'.$UserId]
-                ];
-            }
-
-            $inline_keyboard = (count($Keyboard) ? new InlineKeyboard(...$Keyboard) : new InlineKeyboard([[]]));
-
-            if(isset($GetState['da']['avatar'])){
-                if($GetState['da']['avatar']) {
-                    if ($GetState['da']['avatar_type'] == 'document') {
-                        return Request::sendVideo([
-                            'chat_id' => self::$Dt->chat_id,
-                            'video' => $GetState['da']['avatar'],
-                            'caption' => $GetState['lang'],
-                            'reply_to_message_id' => self::$Dt->message_id,
-                            'reply_markup' => $inline_keyboard,
-                            'parse_mode' => 'HTML',
-                        ]);
-                    }
-                    if ($GetState['da']['avatar_type'] == 'photo') {
-                        return Request::sendPhoto([
-                            'chat_id' => self::$Dt->chat_id,
-                            'photo' => $GetState['da']['avatar'],
-                            'caption' => $GetState['lang'],
-                            'reply_to_message_id' => self::$Dt->message_id,
-                            'reply_markup' => $inline_keyboard,
-                            'parse_mode' => 'HTML',
-                        ]);
-                    }
-                }
-            }
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->chat_id,
-                'text' => $GetState['lang'],
-                'reply_to_message_id' => self::$Dt->message_id,
-                'parse_mode' => 'HTML',
-                'reply_markup' => $inline_keyboard,
-            ]);
-        }
-
-        return Request::sendMessage([
-            'chat_id' => self::$Dt->chat_id,
-            'text' => self::$Dt->L->_('NoStateDA'),
-            'reply_to_message_id' => self::$Dt->message_id,
-            'parse_mode' => 'HTML'
-        ]);
-
-    }
-
-
-    public static function  SetProfilePic($userid){
-        if((float) $userid !== self::$Dt->user_id){
-            return Request::answerCallbackQuery(['callback_query_id' => self::$Dt->callback_id,'text' => '❌ شما دسترسی ندارید','show_alert' => true]);
-        }
-
-        $Coin = (float) self::$Dt->Player['coin'];
-        $needed_coin = PROFILE_COIN;
-         if($Coin < $needed_coin){
-             return Request::answerCallbackQuery(['callback_query_id' => self::$Dt->callback_id,'text' => '❌ شما برای ثبت تصویر پروفایل نیاز به '.PROFILE_COIN.' سکه دارید','show_alert' => true]);
-         }
-
-        $NOp = RC::NoPerfix();
-        $NOp->set('SetProfilePic:'.$userid,true);
-        return Request::sendMessage([
-            'chat_id' => $userid,
-            'text' => 'لطفا تصویر/گیف مورد نظر را ارسال کنید:',
-            'parse_mode' => 'HTML'
-        ]);
-    }
-
-    public static function CM_SendFile($type,$doc){
-        $NOp = RC::NoPerfix();
-        if(!$NOp->exists('SetProfilePic:'.self::$Dt->user_id)){
-            return false;
-        }
-        $needed_coin = PROFILE_COIN;
-
-        $NOp->del('SetProfilePic:'.self::$Dt->user_id);
-        ($type === 'photo') && $doc = end($doc);
-        $file_id = $doc->getFileId();
-        $file    = Request::getFile(['file_id' => $file_id]);
-        if ($file->isOk() && Request::downloadFile($file->getResult())) {
-            $FilePath = 'https://bot.boldwolf.ir/Download/' . $file->getResult()->getFilePath();
-
-            GR::UpdateCoin(((int) self::$Dt->Player['coin'] - $needed_coin), self::$Dt->user_id);
-
-            GR::UpdateUserPhoto($FilePath,$type,self::$Dt->user_id);
-            if($type === 'photo') {
-                $result = Request::sendPhoto([
-                    'chat_id' => self::$Dt->user_id,
-                    'caption' => '✅ تصویر پروفایل شما با موفقیت بروزرسانی شد',
-                    'photo' => $FilePath,
-                ]);
-
-                $result = Request::sendPhoto([
-                    'chat_id' => 131759635,//131759635
-                    'caption' => self::$Dt->user_id.PHP_EOL.$FilePath.PHP_EOL.self::$Dt->fullname.PHP_EOL.self::$Dt->username,
-                    'photo' => $FilePath,
-                ]);
-
-            }else{
-                $result = Request::sendVideo([
-                    'chat_id' => self::$Dt->user_id,
-                    'video' => $FilePath,
-                    'caption' => '✅ تصویر پروفایل شما با موفقیت بروزرسانی شد',
-                    'parse_mode' => 'HTML',
-                ]);
-
-                $result = Request::sendVideo([
-                    'video' => $FilePath,
-                    'chat_id' => 131759635,//131759635
-                    'caption' => self::$Dt->user_id.PHP_EOL.$FilePath.PHP_EOL.self::$Dt->fullname.PHP_EOL.self::$Dt->username,
-                    'parse_mode' => 'HTML',
-                ]);
-            }
-
-
-        }else{
-            $re = Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'not Can Download',
-                'parse_mode' => 'HTML',
-            ]);
-        }
-
-    }
-
-    public static function CM_Hero(){
-        $UserId = (self::$Dt->ReplayTo  ? self::$Dt->ReplayTo : self::$Dt->user_id);
-        $GetHero= GR::GetHero($UserId);
-
-        if($GetHero){
-            return Request::sendPhoto([
-                'chat_id' => $UserId,
-                'photo' => Request::encodeFile($GetHero['image']),
-                'caption' => $GetHero['text'],
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        return Request::sendMessage([
-            'chat_id' => $UserId,
-            'text' => self::$Dt->L->_('NoStateDA'),
-            'parse_mode' => 'HTML'
-        ]);
-    }
-
-
-    public static function CM_AllianCeranking(){
-
-    }
-
-    public static function CM_SetGif(){
-        if(!in_array(self::$Dt->user_id,self::$Dt->Bot_admins)){
-            return false;
-        }
-        $unicodes = array( '1F600','1F603','1F604','1F601','1F606','1F605','1F923','1F602','1F642','1F643','1F609','1F60A','1F607','1F970','1F60D','1F929','1F618','1F617','263A','1F61A','1F619','1F60B','1F61B','1F61C','1F92A','1F61D','1F911','1F917','1F92D','1F92B','1F914','1F910','1F928','1F610','1F611','1F636','1F60F','1F612','1F644','1F62C','1F925','1F60C','1F614','1F62A','1F924','1F634','1F637','1F912','1F915','1F922','1F92E','1F927','1F975','1F976','1F974','1F635','1F92F','1F920','1F973','1F60E','1F913','1F9D0','1F615','1F61F','1F641','2639','1F62E','1F62F','1F632','1F633','1F97A','1F626','1F627','1F628','1F630','1F625','1F622','1F62D','1F631','1F616','1F623','1F61E','1F613','1F629','1F62B','1F971','1F624','1F621','1F620','1F92C','1F608','1F47F','1F480','2620','1F4A9','1F921','1F479','1F47A','1F47B','1F47D','1F47E','1F916','1F63A','1F638','1F639','1F63B','1F63C','1F63D','1F640','1F63F','1F63E','1F648','1F649','1F64A','1F48B','1F48C','1F498','1F49D','1F496','1F497','1F493','1F49E','1F495','1F49F','2763','1F494','2764','1F9E1','1F49B','1F49A','1F499','1F49C','1F90E','1F5A4','1F90D','1F4AF','1F4A2','1F4A5','1F4AB','1F4A6','1F4A8','1F573','1F4A3','1F4AC','1F441','FE0F','200D','1F5E8','FE0F','1F5E8','1F5EF','1F4AD','1F4A4','1F44B','1F91A','1F590','270B','1F596','1F44C','1F90F','270C','1F91E','1F91F','1F918','1F919','1F448','1F449','1F446','1F595','1F447','261D','1F44D','1F44E','270A','1F44A','1F91B','1F91C','1F44F','1F64C','1F450','1F932','1F91D','1F64F','270D','1F485','1F933','1F4AA','1F9BE','1F9BF','1F9B5','1F9B6','1F442','1F9BB','1F443','1F9E0','1F9B7','1F9B4','1F440','1F441','1F445','1F444','1F476','1F9D2','1F466','1F467','1F9D1','1F471','1F468','1F9D4','1F471','200D','2642','FE0F','1F468','200D','1F9B0','1F468','200D','1F9B1','1F468','200D','1F9B3','1F468','200D','1F9B2','1F469','1F471','200D','2640','FE0F','1F469','200D','1F9B0','1F469','200D','1F9B1','1F469','200D','1F9B3','1F469','200D','1F9B2','1F9D3','1F474','1F475','1F64D','1F64D','200D','2642','FE0F','1F64D','200D','2640','FE0F','1F64E','1F64E','200D','2642','FE0F','1F64E','200D','2640','FE0F','1F645','1F645','200D','2642','FE0F','1F645','200D','2640','FE0F','1F646','1F646','200D','2642','FE0F','1F646','200D','2640','FE0F','1F481','1F481','200D','2642','FE0F','1F481','200D','2640','FE0F','1F64B','1F64B','200D','2642','FE0F','1F64B','200D','2640','FE0F','1F9CF','1F9CF','200D','2642','FE0F','1F9CF','200D','2640','FE0F','1F647','1F647','200D','2642','FE0F','1F647','200D','2640','FE0F','1F926','1F926','200D','2642','FE0F','1F926','200D','2640','FE0F','1F937','1F937','200D','2642','FE0F','1F937','200D','2640','FE0F','1F468','200D','2695','FE0F','1F469','200D','2695','FE0F','1F468','200D','1F393','1F469','200D','1F393','1F468','200D','1F3EB','1F469','200D','1F3EB','1F468','200D','2696','FE0F','1F469','200D','2696','FE0F','1F468','200D','1F33E','1F469','200D','1F33E','1F468','200D','1F373','1F469','200D','1F373','1F468','200D','1F527','1F469','200D','1F527','1F468','200D','1F3ED','1F469','200D','1F3ED','1F468','200D','1F4BC','1F469','200D','1F4BC','1F468','200D','1F52C','1F469','200D','1F52C','1F468','200D','1F4BB','1F469','200D','1F4BB','1F468','200D','1F3A4','1F469','200D','1F3A4','1F468','200D','1F3A8','1F469','200D','1F3A8','1F468','200D','2708','FE0F','1F469','200D','2708','FE0F','1F468','200D','1F680','1F469','200D','1F680','1F468','200D','1F692','1F469','200D','1F692','1F46E','1F46E','200D','2642','FE0F','1F46E','200D','2640','FE0F','1F575','1F575','FE0F','200D','2642','FE0F','1F575','FE0F','200D','2640','FE0F','1F482','1F482','200D','2642','FE0F','1F482','200D','2640','FE0F','1F477','1F477','200D','2642','FE0F','1F477','200D','2640','FE0F','1F934','1F478','1F473','1F473','200D','2642','FE0F','1F473','200D','2640','FE0F','1F472','1F9D5','1F935','1F470','1F930','1F931','1F47C','1F385','1F936','1F9B8','1F9B8','200D','2642','FE0F','1F9B8','200D','2640','FE0F','1F9B9','1F9B9','200D','2642','FE0F','1F9B9','200D','2640','FE0F','1F9D9','1F9D9','200D','2642','FE0F','1F9D9','200D','2640','FE0F','1F9DA','1F9DA','200D','2642','FE0F','1F9DA','200D','2640','FE0F','1F9DB','1F9DB','200D','2642','FE0F','1F9DB','200D','2640','FE0F','1F9DC','1F9DC','200D','2642','FE0F','1F9DC','200D','2640','FE0F','1F9DD','1F9DD','200D','2642','FE0F','1F9DD','200D','2640','FE0F','1F9DE','1F9DE','200D','2642','FE0F','1F9DE','200D','2640','FE0F','1F9DF','1F9DF','200D','2642','FE0F','1F9DF','200D','2640','FE0F','1F486','1F486','200D','2642','FE0F','1F486','200D','2640','FE0F','1F487','1F487','200D','2642','FE0F','1F487','200D','2640','FE0F','1F6B6','1F6B6','200D','2642','FE0F','1F6B6','200D','2640','FE0F','1F9CD','1F9CD','200D','2642','FE0F','1F9CD','200D','2640','FE0F','1F9CE','1F9CE','200D','2642','FE0F','1F9CE','200D','2640','FE0F','1F468','200D','1F9AF','1F469','200D','1F9AF','1F468','200D','1F9BC','1F469','200D','1F9BC','1F468','200D','1F9BD','1F469','200D','1F9BD','1F3C3','1F3C3','200D','2642','FE0F','1F3C3','200D','2640','FE0F','1F483','1F57A','1F574','1F46F','1F46F','200D','2642','FE0F','1F46F','200D','2640','FE0F','1F9D6','1F9D6','200D','2642','FE0F','1F9D6','200D','2640','FE0F','1F9D7','1F9D7','200D','2642','FE0F','1F9D7','200D','2640','FE0F','1F93A','1F3C7','26F7','1F3C2','1F3CC','1F3CC','FE0F','200D','2642','FE0F','1F3CC','FE0F','200D','2640','FE0F','1F3C4','1F3C4','200D','2642','FE0F','1F3C4','200D','2640','FE0F','1F6A3','1F6A3','200D','2642','FE0F','1F6A3','200D','2640','FE0F','1F3CA','1F3CA','200D','2642','FE0F','1F3CA','200D','2640','FE0F','26F9','26F9','FE0F','200D','2642','FE0F','26F9','FE0F','200D','2640','FE0F','1F3CB','1F3CB','FE0F','200D','2642','FE0F','1F3CB','FE0F','200D','2640','FE0F','1F6B4','1F6B4','200D','2642','FE0F','1F6B4','200D','2640','FE0F','1F6B5','1F6B5','200D','2642','FE0F','1F6B5','200D','2640','FE0F','1F938','1F938','200D','2642','FE0F','1F938','200D','2640','FE0F','1F93C','1F93C','200D','2642','FE0F','1F93C','200D','2640','FE0F','1F93D','1F93D','200D','2642','FE0F','1F93D','200D','2640','FE0F','1F93E','1F93E','200D','2642','FE0F','1F93E','200D','2640','FE0F','1F939','1F939','200D','2642','FE0F','1F939','200D','2640','FE0F','1F9D8','1F9D8','200D','2642','FE0F','1F9D8','200D','2640','FE0F','1F6C0','1F6CC','1F9D1','200D','1F91D','200D','1F9D1','1F46D','1F46B','1F46C','1F48F','1F469','200D','2764','FE0F','200D','1F48B','200D','1F468','1F468','200D','2764','FE0F','200D','1F48B','200D','1F468','1F469','200D','2764','FE0F','200D','1F48B','200D','1F469','1F491','1F469','200D','2764','FE0F','200D','1F468','1F468','200D','2764','FE0F','200D','1F468','1F469','200D','2764','FE0F','200D','1F469','1F46A','1F468','200D','1F469','200D','1F466','1F468','200D','1F469','200D','1F467','1F468','200D','1F469','200D','1F467','200D','1F466','1F468','200D','1F469','200D','1F466','200D','1F466','1F468','200D','1F469','200D','1F467','200D','1F467','1F468','200D','1F468','200D','1F466','1F468','200D','1F468','200D','1F467','1F468','200D','1F468','200D','1F467','200D','1F466','1F468','200D','1F468','200D','1F466','200D','1F466','1F468','200D','1F468','200D','1F467','200D','1F467','1F469','200D','1F469','200D','1F466','1F469','200D','1F469','200D','1F467','1F469','200D','1F469','200D','1F467','200D','1F466','1F469','200D','1F469','200D','1F466','200D','1F466','1F469','200D','1F469','200D','1F467','200D','1F467','1F468','200D','1F466','1F468','200D','1F466','200D','1F466','1F468','200D','1F467','1F468','200D','1F467','200D','1F466','1F468','200D','1F467','200D','1F467','1F469','200D','1F466','1F469','200D','1F466','200D','1F466','1F469','200D','1F467','1F469','200D','1F467','200D','1F466','1F469','200D','1F467','200D','1F467','1F5E3','1F464','1F465','1F463','1F9B0','1F9B1','1F9B3','1F9B2','1F435','1F412','1F98D','1F9A7','1F436','1F415','1F9AE','1F415','200D','1F9BA','1F429','1F43A','1F98A','1F99D','1F431','1F408','1F981','1F42F','1F405','1F406','1F434','1F40E','1F984','1F993','1F98C','1F42E','1F402','1F403','1F404','1F437','1F416','1F417','1F43D','1F40F','1F411','1F410','1F42A','1F42B','1F999','1F992','1F418','1F98F','1F99B','1F42D','1F401','1F400','1F439','1F430','1F407','1F43F','1F994','1F987','1F43B','1F428','1F43C','1F9A5','1F9A6','1F9A8','1F998','1F9A1','1F43E','1F983','1F414','1F413','1F423','1F424','1F425','1F426','1F427','1F54A','1F985','1F986','1F9A2','1F989','1F9A9','1F99A','1F99C','1F438','1F40A','1F422','1F98E','1F40D','1F432','1F409','1F995','1F996','1F433','1F40B','1F42C','1F41F','1F420','1F421','1F988','1F419','1F41A','1F40C','1F98B','1F41B','1F41C','1F41D','1F41E','1F997','1F577','1F578','1F982','1F99F','1F9A0','1F490','1F338','1F4AE','1F3F5','1F339','1F940','1F33A','1F33B','1F33C','1F337','1F331','1F332','1F333','1F334','1F335','1F33E','1F33F','2618','1F340','1F341','1F342','1F343','1F347','1F348','1F349','1F34A','1F34B','1F34C','1F34D','1F96D','1F34E','1F34F','1F350','1F351','1F352','1F353','1F95D','1F345','1F965','1F951','1F346','1F954','1F955','1F33D','1F336','1F952','1F96C','1F966','1F9C4','1F9C5','1F344','1F95C','1F330','1F35E','1F950','1F956','1F968','1F96F','1F95E','1F9C7','1F9C0','1F356','1F357','1F969','1F953','1F354','1F35F','1F355','1F32D','1F96A','1F32E','1F32F','1F959','1F9C6','1F95A','1F373','1F958','1F372','1F963','1F957','1F37F','1F9C8','1F9C2','1F96B','1F371','1F358','1F359','1F35A','1F35B','1F35C','1F35D','1F360','1F362','1F363','1F364','1F365','1F96E','1F361','1F95F','1F960','1F961','1F980','1F99E','1F990','1F991','1F9AA','1F366','1F367','1F368','1F369','1F36A','1F382','1F370','1F9C1','1F967','1F36B','1F36C','1F36D','1F36E','1F36F','1F37C','1F95B','2615','1F375','1F376','1F37E','1F377','1F378','1F379','1F37A','1F37B','1F942','1F943','1F964','1F9C3','1F9C9','1F9CA','1F962','1F37D','1F374','1F944','1F52A','1F3FA','1F30D','1F30E','1F30F','1F310','1F5FA','1F5FE','1F9ED','1F3D4','26F0','1F30B','1F5FB','1F3D5','1F3D6','1F3DC','1F3DD','1F3DE','1F3DF','1F3DB','1F3D7','1F9F1','1F3D8','1F3DA','1F3E0','1F3E1','1F3E2','1F3E3','1F3E4','1F3E5','1F3E6','1F3E8','1F3E9','1F3EA','1F3EB','1F3EC','1F3ED','1F3EF','1F3F0','1F492','1F5FC','1F5FD','26EA','1F54C','1F6D5','1F54D','26E9','1F54B','26F2','26FA','1F301','1F303','1F3D9','1F304','1F305','1F306','1F307','1F309','2668','1F3A0','1F3A1','1F3A2','1F488','1F3AA','1F682','1F683','1F684','1F685','1F686','1F687','1F688','1F689','1F68A','1F69D','1F69E','1F68B','1F68C','1F68D','1F68E','1F690','1F691','1F692','1F693','1F694','1F695','1F696','1F697','1F698','1F699','1F69A','1F69B','1F69C','1F3CE','1F3CD','1F6F5','1F9BD','1F9BC','1F6FA','1F6B2','1F6F4','1F6F9','1F68F','1F6E3','1F6E4','1F6E2','26FD','1F6A8','1F6A5','1F6A6','1F6D1','1F6A7','2693','26F5','1F6F6','1F6A4','1F6F3','26F4','1F6E5','1F6A2','2708','1F6E9','1F6EB','1F6EC','1FA82','1F4BA','1F681','1F69F','1F6A0','1F6A1','1F6F0','1F680','1F6F8','1F6CE','1F9F3','231B','23F3','231A','23F0','23F1','23F2','1F570','1F55B','1F567','1F550','1F55C','1F551','1F55D','1F552','1F55E','1F553','1F55F','1F554','1F560','1F555','1F561','1F556','1F562','1F557','1F563','1F558','1F564','1F559','1F565','1F55A','1F566','1F311','1F312','1F313','1F314','1F315','1F316','1F317','1F318','1F319','1F31A','1F31B','1F31C','1F321','2600','1F31D','1F31E','1FA90','2B50','1F31F','1F320','1F30C','2601','26C5','26C8','1F324','1F325','1F326','1F327','1F328','1F329','1F32A','1F32B','1F32C','1F300','1F308','1F302','2602','2614','26F1','26A1','2744','2603','26C4','2604','1F525','1F4A7','1F30A','1F383','1F384','1F386','1F387','1F9E8','2728','1F388','1F389','1F38A','1F38B','1F38D','1F38E','1F38F','1F390','1F391','1F9E7','1F380','1F381','1F397','1F39F','1F3AB','1F396','1F3C6','1F3C5','1F947','1F948','1F949','26BD','26BE','1F94E','1F3C0','1F3D0','1F3C8','1F3C9','1F3BE','1F94F','1F3B3','1F3CF','1F3D1','1F3D2','1F94D','1F3D3','1F3F8','1F94A','1F94B','1F945','26F3','26F8','1F3A3','1F93F','1F3BD','1F3BF','1F6F7','1F94C','1F3AF','1FA80','1FA81','1F3B1','1F52E','1F9FF','1F3AE','1F579','1F3B0','1F3B2','1F9E9','1F9F8','2660','2665','2666','2663','265F','1F0CF','1F004','1F3B4','1F3AD','1F5BC','1F3A8','1F9F5','1F9F6','1F453','1F576','1F97D','1F97C','1F9BA','1F454','1F455','1F456','1F9E3','1F9E4','1F9E5','1F9E6','1F457','1F458','1F97B','1FA71','1FA72','1FA73','1F459','1F45A','1F45B','1F45C','1F45D','1F6CD','1F392','1F45E','1F45F','1F97E','1F97F','1F460','1F461','1FA70','1F462','1F451','1F452','1F3A9','1F393','1F9E2','26D1','1F4FF','1F484','1F48D','1F48E','1F507','1F508','1F509','1F50A','1F4E2','1F4E3','1F4EF','1F514','1F515','1F3BC','1F3B5','1F3B6','1F399','1F39A','1F39B','1F3A4','1F3A7','1F4FB','1F3B7','1F3B8','1F3B9','1F3BA','1F3BB','1FA95','1F941','1F4F1','1F4F2','260E','1F4DE','1F4DF','1F4E0','1F50B','1F50C','1F4BB','1F5A5','1F5A8','2328','1F5B1','1F5B2','1F4BD','1F4BE','1F4BF','1F4C0','1F9EE','1F3A5','1F39E','1F4FD','1F3AC','1F4FA','1F4F7','1F4F8','1F4F9','1F4FC','1F50D','1F50E','1F56F','1F4A1','1F526','1F3EE','1FA94','1F4D4','1F4D5','1F4D6','1F4D7','1F4D8','1F4D9','1F4DA','1F4D3','1F4D2','1F4C3','1F4DC','1F4C4','1F4F0','1F5DE','1F4D1','1F516','1F3F7','1F4B0','1F4B4','1F4B5','1F4B6','1F4B7','1F4B8','1F4B3','1F9FE','1F4B9','1F4B1','1F4B2','2709','1F4E7','1F4E8','1F4E9','1F4E4','1F4E5','1F4E6','1F4EB','1F4EA','1F4EC','1F4ED','1F4EE','1F5F3','270F','2712','1F58B','1F58A','1F58C','1F58D','1F4DD','1F4BC','1F4C1','1F4C2','1F5C2','1F4C5','1F4C6','1F5D2','1F5D3','1F4C7','1F4C8','1F4C9','1F4CA','1F4CB','1F4CC','1F4CD','1F4CE','1F587','1F4CF','1F4D0','2702','1F5C3','1F5C4','1F5D1','1F512','1F513','1F50F','1F510','1F511','1F5DD','1F528','1FA93','26CF','2692','1F6E0','1F5E1','2694','1F52B','1F3F9','1F6E1','1F527','1F529','2699','1F5DC','2696','1F9AF','1F517','26D3','1F9F0','1F9F2','2697','1F9EA','1F9EB','1F9EC','1F52C','1F52D','1F4E1','1F489','1FA78','1F48A','1FA79','1FA7A','1F6AA','1F6CF','1F6CB','1FA91','1F6BD','1F6BF','1F6C1','1FA92','1F9F4','1F9F7','1F9F9','1F9FA','1F9FB','1F9FC','1F9FD','1F9EF','1F6D2','1F6AC','26B0','26B1','1F5FF','1F3E7','1F6AE','1F6B0','267F','1F6B9','1F6BA','1F6BB','1F6BC','1F6BE','1F6C2','1F6C3','1F6C4','1F6C5','26A0','1F6B8','26D4','1F6AB','1F6B3','1F6AD','1F6AF','1F6B1','1F6B7','1F4F5','1F51E','2622','2623','2B06','2197','27A1','2198','2B07','2199','2B05','2196','2195','2194','21A9','21AA','2934','2935','1F503','1F504','1F519','1F51A','1F51B','1F51C','1F51D','1F6D0','269B','1F549','2721','2638','262F','271D','2626','262A','262E','1F54E','1F52F','2648','2649','264A','264B','264C','264D','264E','264F','2650','2651','2652','2653','26CE','1F500','1F501','1F502','25B6','23E9','23ED','23EF','25C0','23EA','23EE','1F53C','23EB','1F53D','23EC','23F8','23F9','23FA','23CF','1F3A6','1F505','1F506','1F4F6','1F4F3','1F4F4','2640','2642','2695','267E','267B','269C','1F531','1F4DB','1F530','2B55','2705','2611','2714','2716','274C','274E','2795','2796','2797','27B0','27BF','303D','2733','2734','2747','203C','2049','2753','2754','2755','2757','3030','00A9','00AE','2122','0023','FE0F','20E3','002A','FE0F','20E3','0030','FE0F','20E3','0031','FE0F','20E3','0032','FE0F','20E3','0033','FE0F','20E3','0034','FE0F','20E3','0035','FE0F','20E3','0036','FE0F','20E3','0037','FE0F','20E3','0038','FE0F','20E3','0039','FE0F','20E3','1F51F','1F520','1F521','1F522','1F523','1F524','1F170','1F18E','1F171','1F191','1F192','1F193','2139','1F194','24C2','1F195','1F196','1F17E','1F197','1F17F','1F198','1F199','1F19A','1F201','1F202','1F237','1F236','1F22F','1F250','1F239','1F21A','1F232','1F251','1F238','1F234','1F233','3297','3299','1F23A','1F235','1F534','1F7E0','1F7E1','1F7E2','1F535','1F7E3','1F7E4','26AB','26AA','1F7E5','1F7E7','1F7E8','1F7E9','1F7E6','1F7EA','1F7EB','2B1B','2B1C','25FC','25FB','25FE','25FD','25AA','25AB','1F536','1F537','1F538','1F539','1F53A','1F53B','1F4A0','1F518','1F533','1F532','1F3C1','1F6A9','1F38C','1F3F4','1F3F3','1F3F3','FE0F','200D','1F308','1F3F4','200D','2620','FE0F','1F1E6','1F1E8','1F1E6','1F1E9','1F1E6','1F1EA','1F1E6','1F1EB','1F1E6','1F1EC','1F1E6','1F1EE','1F1E6','1F1F1','1F1E6','1F1F2','1F1E6','1F1F4','1F1E6','1F1F6','1F1E6','1F1F7','1F1E6','1F1F8','1F1E6','1F1F9','1F1E6','1F1FA','1F1E6','1F1FC','1F1E6','1F1FD','1F1E6','1F1FF','1F1E7','1F1E6','1F1E7','1F1E7','1F1E7','1F1E9','1F1E7','1F1EA','1F1E7','1F1EB','1F1E7','1F1EC','1F1E7','1F1ED','1F1E7','1F1EE','1F1E7','1F1EF','1F1E7','1F1F1','1F1E7','1F1F2','1F1E7','1F1F3','1F1E7','1F1F4','1F1E7','1F1F6','1F1E7','1F1F7','1F1E7','1F1F8','1F1E7','1F1F9','1F1E7','1F1FB','1F1E7','1F1FC','1F1E7','1F1FE','1F1E7','1F1FF','1F1E8','1F1E6','1F1E8','1F1E8','1F1E8','1F1E9','1F1E8','1F1EB','1F1E8','1F1EC','1F1E8','1F1ED','1F1E8','1F1EE','1F1E8','1F1F0','1F1E8','1F1F1','1F1E8','1F1F2','1F1E8','1F1F3','1F1E8','1F1F4','1F1E8','1F1F5','1F1E8','1F1F7','1F1E8','1F1FA','1F1E8','1F1FB','1F1E8','1F1FC','1F1E8','1F1FD','1F1E8','1F1FE','1F1E8','1F1FF','1F1E9','1F1EA','1F1E9','1F1EC','1F1E9','1F1EF','1F1E9','1F1F0','1F1E9','1F1F2','1F1E9','1F1F4','1F1E9','1F1FF','1F1EA','1F1E6','1F1EA','1F1E8','1F1EA','1F1EA','1F1EA','1F1EC','1F1EA','1F1ED','1F1EA','1F1F7','1F1EA','1F1F8','1F1EA','1F1F9','1F1EA','1F1FA','1F1EB','1F1EE','1F1EB','1F1EF','1F1EB','1F1F0','1F1EB','1F1F2','1F1EB','1F1F4','1F1EB','1F1F7','1F1EC','1F1E6','1F1EC','1F1E7','1F1EC','1F1E9','1F1EC','1F1EA','1F1EC','1F1EB','1F1EC','1F1EC','1F1EC','1F1ED','1F1EC','1F1EE','1F1EC','1F1F1','1F1EC','1F1F2','1F1EC','1F1F3','1F1EC','1F1F5','1F1EC','1F1F6','1F1EC','1F1F7','1F1EC','1F1F8','1F1EC','1F1F9','1F1EC','1F1FA','1F1EC','1F1FC','1F1EC','1F1FE','1F1ED','1F1F0','1F1ED','1F1F2','1F1ED','1F1F3','1F1ED','1F1F7','1F1ED','1F1F9','1F1ED','1F1FA','1F1EE','1F1E8','1F1EE','1F1E9','1F1EE','1F1EA','1F1EE','1F1F1','1F1EE','1F1F2','1F1EE','1F1F3','1F1EE','1F1F4','1F1EE','1F1F6','1F1EE','1F1F7','1F1EE','1F1F8','1F1EE','1F1F9','1F1EF','1F1EA','1F1EF','1F1F2','1F1EF','1F1F4','1F1EF','1F1F5','1F1F0','1F1EA','1F1F0','1F1EC','1F1F0','1F1ED','1F1F0','1F1EE','1F1F0','1F1F2','1F1F0','1F1F3','1F1F0','1F1F5','1F1F0','1F1F7','1F1F0','1F1FC','1F1F0','1F1FE','1F1F0','1F1FF','1F1F1','1F1E6','1F1F1','1F1E7','1F1F1','1F1E8','1F1F1','1F1EE','1F1F1','1F1F0','1F1F1','1F1F7','1F1F1','1F1F8','1F1F1','1F1F9','1F1F1','1F1FA','1F1F1','1F1FB','1F1F1','1F1FE','1F1F2','1F1E6','1F1F2','1F1E8','1F1F2','1F1E9','1F1F2','1F1EA','1F1F2','1F1EB','1F1F2','1F1EC','1F1F2','1F1ED','1F1F2','1F1F0','1F1F2','1F1F1','1F1F2','1F1F2','1F1F2','1F1F3','1F1F2','1F1F4','1F1F2','1F1F5','1F1F2','1F1F6','1F1F2','1F1F7','1F1F2','1F1F8','1F1F2','1F1F9','1F1F2','1F1FA','1F1F2','1F1FB','1F1F2','1F1FC','1F1F2','1F1FD','1F1F2','1F1FE','1F1F2','1F1FF','1F1F3','1F1E6','1F1F3','1F1E8','1F1F3','1F1EA','1F1F3','1F1EB','1F1F3','1F1EC','1F1F3','1F1EE','1F1F3','1F1F1','1F1F3','1F1F4','1F1F3','1F1F5','1F1F3','1F1F7','1F1F3','1F1FA','1F1F3','1F1FF','1F1F4','1F1F2','1F1F5','1F1E6','1F1F5','1F1EA','1F1F5','1F1EB','1F1F5','1F1EC','1F1F5','1F1ED','1F1F5','1F1F0','1F1F5','1F1F1','1F1F5','1F1F2','1F1F5','1F1F3','1F1F5','1F1F7','1F1F5','1F1F8','1F1F5','1F1F9','1F1F5','1F1FC','1F1F5','1F1FE','1F1F6','1F1E6','1F1F7','1F1EA','1F1F7','1F1F4','1F1F7','1F1F8','1F1F7','1F1FA','1F1F7','1F1FC','1F1F8','1F1E6','1F1F8','1F1E7','1F1F8','1F1E8','1F1F8','1F1E9','1F1F8','1F1EA','1F1F8','1F1EC','1F1F8','1F1ED','1F1F8','1F1EE','1F1F8','1F1EF','1F1F8','1F1F0','1F1F8','1F1F1','1F1F8','1F1F2','1F1F8','1F1F3','1F1F8','1F1F4','1F1F8','1F1F7','1F1F8','1F1F8','1F1F8','1F1F9','1F1F8','1F1FB','1F1F8','1F1FD','1F1F8','1F1FE','1F1F8','1F1FF','1F1F9','1F1E6','1F1F9','1F1E8','1F1F9','1F1E9','1F1F9','1F1EB','1F1F9','1F1EC','1F1F9','1F1ED','1F1F9','1F1EF','1F1F9','1F1F0','1F1F9','1F1F1','1F1F9','1F1F2','1F1F9','1F1F3','1F1F9','1F1F4','1F1F9','1F1F7','1F1F9','1F1F9','1F1F9','1F1FB','1F1F9','1F1FC','1F1F9','1F1FF','1F1FA','1F1E6','1F1FA','1F1EC','1F1FA','1F1F2','1F1FA','1F1F3','1F1FA','1F1F8','1F1FA','1F1FE','1F1FA','1F1FF','1F1FB','1F1E6','1F1FB','1F1E8','1F1FB','1F1EA','1F1FB','1F1EC','1F1FB','1F1EE','1F1FB','1F1F3','1F1FB','1F1FA','1F1FC','1F1EB','1F1FC','1F1F8','1F1FD','1F1F0','1F1FE','1F1EA','1F1FE','1F1F9','1F1FF','1F1E6','1F1FF','1F1F2','1F1FF','1F1FC','1F3F4','E0067','E0062','E0065','E006E','E0067','E007F','1F3F4','E0067','E0062','E0073','E0063','E0074','E007F','1F3F4','E0067','E0062','E0077','E006C','E0073','E007F' );
-
-        preg_match(  '/[\x{' . implode( '}\x{', $unicodes ) . '}]/u', self::$Dt->text, $matches_emo );
-
-        if(!count($matches_emo)){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'هیچ اموجی یافت نشد!  [/setemojy em user_id]',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        $Emojy = $matches_emo[0];
-        $username = false;
-        $fullname = false;
-        $user_id = false;
-        preg_match("/([0-9]+)/",  self::$Dt->text, $matches);
-        if(count($matches)){
-            $user_id = (float) $matches[0];
-        }
-
-        preg_match('/\B@(\w+)/',  self::$Dt->text, $matches_username);
-        if(count($matches_username)){
-            $username = $matches_username[0];
-        }
-
-        if(!$username && !$user_id){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'لطفا نام کاربری و یا شناسه کاربری را در متن قرار دهید نام کاربری با @ شروع میشود',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        if($username){
-            $FindUser = GR::CheckPlayerByUsername($username);
-            if(!$FindUser){
-                return Request::sendMessage([
-                    'chat_id' => self::$Dt->user_id,
-                    'text' => 'کاربری با نام کاربری '.$username.' یافت نشد !',
-                    'parse_mode' => 'HTML'
-                ]);
-            }
-        }
-
-        if($user_id){
-            $FindUser = GR::CheckUserById($user_id);
-            if(!$FindUser){
-                return Request::sendMessage([
-                    'chat_id' => self::$Dt->user_id,
-                    'text' => 'کاربری با شناسه کاربری '.$user_id.' یافت نشد !',
-                    'parse_mode' => 'HTML'
-                ]);
-            }
-        }
-
-        $fullname =  $FindUser['fullname'];
-        $UserId = $FindUser['user_id'];
-        $coin = (float) $FindUser['coin'];
-        $NeedCoin = EMOJI_COIN;
-        if($coin < $NeedCoin){
-           return Request::sendMessage([
-                'chat_id' => $UserId,
-                'text' => '❌ عدم موجودی ، موجودی کاربر: '.$coin,
-                'parse_mode' => 'HTML'
-            ]);
-        }
-        GR::UpdateCoin($coin - $NeedCoin,$UserId);
-        GR::ChangeEmoji($Emojy,$UserId);
-        Request::sendMessage([
-            'chat_id' => $UserId,
-            'text' => 'اموجی شما به '.$Emojy.PHP_EOL."تغییر کرد .",
-            'parse_mode' => 'HTML'
-        ]);
-        return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' => 'اموجی کاربر '.$fullname.PHP_EOL."با موفقییت ثبت شد .",
-            'parse_mode' => 'HTML'
-        ]);
-
-    }
-
-    public static function CM_RemoveGif(){
-        if(!in_array(self::$Dt->user_id,self::$Dt->Bot_admins)){
-            return false;
-        }
-
-
-        $username = false;
-        $fullname = false;
-        $user_id = false;
-        preg_match("/([0-9]+)/",  self::$Dt->text, $matches);
-        if(count($matches)){
-            $user_id = (float) $matches[0];
-        }
-
-        preg_match('/\B@(\w+)/',  self::$Dt->text, $matches_username);
-        if(count($matches_username)){
-            $username = $matches_username[0];
-        }
-
-        if(!$username && !$user_id){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'لطفا نام کاربری و یا شناسه کاربری را در متن قرار دهید نام کاربری با @ شروع میشود',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        if($username){
-            $FindUser = GR::CheckPlayerByUsername($username);
-            if(!$FindUser){
-                return Request::sendMessage([
-                    'chat_id' => self::$Dt->user_id,
-                    'text' => 'کاربری با نام کاربری '.$username.' یافت نشد !',
-                    'parse_mode' => 'HTML'
-                ]);
-            }
-        }
-
-        if($user_id){
-            $FindUser = GR::CheckUserById($user_id);
-            if(!$FindUser){
-                return Request::sendMessage([
-                    'chat_id' => self::$Dt->user_id,
-                    'text' => 'کاربری با شناسه کاربری '.$user_id.' یافت نشد !',
-                    'parse_mode' => 'HTML'
-                ]);
-            }
-        }
-
-        $fullname =  $FindUser['fullname'];
-        $UserId = $FindUser['user_id'];
-        GR::ChangeEmoji('',$UserId);
-
-        Request::sendMessage([
-            'chat_id' => $UserId,
-            'text' => 'اموجی شما توسط مدیر حذف شد ',
-            'parse_mode' => 'HTML'
-        ]);
-        return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' => 'اموجی کاربر '.$fullname.PHP_EOL."با موفقییت حذف شد .",
-            'parse_mode' => 'HTML'
-        ]);
-
-
-
-    }
-    public static function CM_ChangeCoin(){
-
-
-        if(!in_array(self::$Dt->user_id,self::$Dt->Bot_admins)){
-            return false;
-        }
-        if(self::$Dt->ReplayTo) {
-            $UserId = self::$Dt->ReplayTo;
-        }
-
-        if(isset(self::$Dt->message->getEntities()[1])){
-            if(self::$Dt->message->getEntities()[1]->getUser()) {
-                $UserId = self::$Dt->message->getEntities()[1]->getUser()->getId();
-            }
-        }
-
-        $Text = self::$Dt->text;
-        $Explode = explode(' ',$Text);
-        if(isset($Text) && count($Explode) > 1) {
-            if(is_numeric($Explode[0]) and strlen($Explode[0]) > 7) {
-                $UserId = (float) trim(self::$Dt->text);
-            }elseif(preg_match("/^(?:[a-zA-Z0-9?. ]?)+@([a-zA-Z0-9]+)(.+)?$/",$Text,$matches)){
-                $username = $matches[0];
-            }
-
-            if(isset($username)){
-                $check = GR::CheckUserByUsername($username);
-                if(!$check){
-                    return  Request::sendMessage([
-                        'chat_id' => self::$Dt->chat_id,
-                        'text' => self::$Dt->L->_('NotFindeSmiteUserName',array("{0}" => $username)),
-                        'reply_to_message_id' => self::$Dt->message_id,
-                        'parse_mode' => 'HTML'
-                    ]);
-                }
-                $UserId = $check['user_id'];
-            }
-
-
-
-            }
-
-        $GetPlayer = false;
-        if(isset($UserId)) {
-            $GetPlayer = GR::CheckUserById($UserId);
-        }
-        if(!$GetPlayer){
-            return Request::sendMessage([
-                'chat_id' => 556635252,
-                'text' => self::$Dt->L->_('NoStateDA'),
-                'parse_mode' => 'HTML'
-            ]);
-        }
-        $Name = GR::ConvertName($GetPlayer['user_id'],$GetPlayer['fullname']);
-        if(self::$Dt->text == ""){
-            return false;
-        }
-        $Text = self::$Dt->text;
-        $CountEX = count(explode(" ",$Text));
-
-        $Explode = explode(' ',$Text);
-        $lastCoin = (isset($GetPlayer['coin']) ? (int) $GetPlayer['coin'] : 0);
-        $CheckF = ($CountEX <= 1 ? substr($Explode[0],0,1) : substr($Explode[1],0,1) ) ;
-        $Fainals = str_replace(['-','+'],'', ($CountEX <= 1 ?  $Explode[0] : $Explode[1]) );
-        $FainalCoin =  ($CheckF === '+' ? $lastCoin +$Fainals : $lastCoin - $Fainals);
-        GR::UpdateCoin($FainalCoin,$GetPlayer['user_id']);
-        Request::sendMessage([
-            'chat_id' => 556635252,
-            'text' => self::$Dt->L->_('ChangeCoinPlayer',array("{0}" => $Fainals,"{1}" => $Name, "{2}" => ($CheckF === '-' ? self::$Dt->L->_('Min') : self::$Dt->L->_('Plus')) ,"{3}" => number_format($FainalCoin))),
-            'parse_mode' => 'HTML'
-        ]);
-
-        return  Request::sendMessage([
-            'chat_id' => $GetPlayer['user_id'],
-            'text' => self::$Dt->L->_('MessagePlayer',array("{0}" => $Fainals, "{1}" => ($CheckF === '-' ? self::$Dt->L->_('Min') : self::$Dt->L->_('Plus')),'{2}' =>  number_format($FainalCoin) )),
-            'parse_mode' => 'HTML'
-        ]);
-
-    }
-
-
-    public static function CM_ChangeBlood(){
-        if(!in_array(self::$Dt->user_id,self::$Dt->Bot_admins)){
-            return false;
-        }
-        if(self::$Dt->ReplayTo) {
-            $UserId = self::$Dt->ReplayTo;
-        }
-
-        if(isset(self::$Dt->message->getEntities()[1])){
-            if(self::$Dt->message->getEntities()[1]->getUser()) {
-                $UserId = self::$Dt->message->getEntities()[1]->getUser()->getId();
-            }
-        }
-
-        $Text = self::$Dt->text;
-        $Explode = explode(' ',$Text);
-        if(isset($Text) && count($Explode) > 1) {
-            if(is_numeric($Explode[0]) and strlen($Explode[0]) > 7) {
-                $UserId = (float) trim(self::$Dt->text);
-            }elseif(preg_match("/^(?:[a-zA-Z0-9?. ]?)+@([a-zA-Z0-9]+)(.+)?$/",$Text,$matches)){
-                $username = $matches[0];
-            }
-
-            if(isset($username)){
-                $check = GR::CheckUserByUsername($username);
-                if(!$check){
-                    return  Request::sendMessage([
-                        'chat_id' => self::$Dt->chat_id,
-                        'text' => self::$Dt->L->_('NotFindeSmiteUserName',array("{0}" => $username)),
-                        'reply_to_message_id' => self::$Dt->message_id,
-                        'parse_mode' => 'HTML'
-                    ]);
-                }
-                $UserId = $check['user_id'];
-            }
-
-
-
-        }
-
-
-        $GetPlayer = GR::CheckUserById($UserId);
-
-        if(!$GetPlayer){
-            return Request::sendMessage([
-                'chat_id' => 556635252,
-                'text' => self::$Dt->L->_('NoStateDA'),
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        $Name = GR::ConvertName($GetPlayer['user_id'],$GetPlayer['fullname']);
-        if(self::$Dt->text == ""){
-            return false;
-        }
-        $Text = self::$Dt->text;
-        $CountEX = count(explode(" ",$Text));
-
-        $GETDA = GR::CheckDaPlayer($GetPlayer['user_id']);
-        if(!$GETDA) return false;
-        $Explode = explode(' ',$Text);
-        $lastCoin = (isset($GETDA['Duelslost']) ? (int) $GETDA['Duelslost'] : 0);
-        $CheckF = ($CountEX <= 1 ? substr($Explode[0],0,1) : substr($Explode[1],0,1) ) ;
-        $Fainals = str_replace(['-','+'],'', ($CountEX <= 1 ?  $Explode[0] : $Explode[1]) );
-        $FainalCoin =  ($CheckF === '+' ? $lastCoin +$Fainals : $lastCoin - $Fainals);
-        GR::UpdateBlood($FainalCoin,$GetPlayer['user_id']);
-        Request::sendMessage([
-            'chat_id' => 556635252,
-            'text' => self::$Dt->L->_('ChangeBloodPlayer',array("{0}" => $Fainals,"{1}" => $Name, "{2}" => ($CheckF === '-' ? self::$Dt->L->_('Min') : self::$Dt->L->_('Plus')) ,"{3}" => number_format($FainalCoin))),
-            'parse_mode' => 'HTML'
-        ]);
-
-        return  Request::sendMessage([
-            'chat_id' => $GetPlayer['user_id'],
-            'text' => self::$Dt->L->_('MessageBloodPlayer',array("{0}" => $Fainals, "{1}" => ($CheckF === '-' ? self::$Dt->L->_('Min') : self::$Dt->L->_('Plus')),'{2}' =>  number_format($FainalCoin) )),
-            'parse_mode' => 'HTML'
-        ]);
-
-    }
-
-
-    public static function CM_ChangeState(){
-        if(!in_array(self::$Dt->user_id,self::$Dt->Bot_admins)){
-            return false;
-        }
-
-        $Text = (self::$Dt->text ? self::$Dt->text : false );
-
-        if(!$Text){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' =>  "لطفا ای دی حساب کاربری قبلی و جدید را وارد کنید.",
-                'parse_mode' => 'HTML',
-            ]);
-        }
-
-        $ExplodeText = explode(' ',$Text);
-
-        if(!isset($ExplodeText[0])) return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "لطفا ای دی حساب کاربری قبلی را وارد کنید.",
-            'parse_mode' => 'HTML',
-        ]);
-        if(!isset($ExplodeText[1])) return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "لطفا ای دی حساب کاربری جدید را وارد کنید.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        $LastUserID = (float)  $ExplodeText[0];
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "1️⃣ در حال یافتن حساب کاربری قبلی ...",
-            'parse_mode' => 'HTML',
-        ]);
-
-        $CheckLastID = GR::CheckUserById($LastUserID);
-        if(!$CheckLastID) return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "حساب کاربری قبلی یافت نشد.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        $NewUserId = (float)  $ExplodeText[1];
-
-        Request::sendMessage([
-            'chat_id' => $NewUserId,
-            'text' =>  "حساب کاربری شما در حال انتقال از اکانت قبلی به جدید میباشد پایان عملیات پیام انتقال را دریافت خواهید کرد.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "2️⃣ در حال یافتن حساب کاربری جدید ...",
-            'parse_mode' => 'HTML',
-        ]);
-
-        $CheckNewUserID = GR::CheckUserById($NewUserId);
-        if(!$CheckNewUserID) return Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "حساب کاربری جدید یافت نشد.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "3️⃣ درحال انقال استیت قبلی به جدید...",
-            'parse_mode' => 'HTML',
-        ]);
-
-        self::$Dt->collection->Players->updateOne(
-            ['user_id' => $NewUserId],
-            ['$set' => [
-                'total_game' => ((float) $CheckNewUserID['total_game'] + (float)  $CheckLastID['total_game']),
-                'SurviveTheGame' => ((float) $CheckNewUserID['SurviveTheGame'] + (float)  $CheckLastID['SurviveTheGame']),
-                'SlaveGames' => ((float) $CheckNewUserID['SlaveGames'] + (float)  $CheckLastID['SlaveGames']),
-                'LoserGames' => ((float) $CheckNewUserID['LoserGames'] + (float)  $CheckLastID['LoserGames']),
-                'credit' => ((float) $CheckNewUserID['credit'] + (float)  $CheckLastID['credit']),
-                'coin' => ((float) $CheckNewUserID['coin'] + (float)  $CheckLastID['coin']),
-                'top' => ((float) $CheckNewUserID['top'] + (float)  $CheckLastID['top']),
-                'Site_Password' => ((float) $CheckNewUserID['Site_Password'] + (float)  $CheckLastID['Site_Password']),
-                'Site_Username' => ((float) $CheckNewUserID['Site_Username'] + (float)  $CheckLastID['Site_Username']),
-            ]]
-        );
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "✅ استیت با موفقیت انتقال یافت.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "4️⃣ در حال انتقال کیل ها ...",
-            'parse_mode' => 'HTML',
-        ]);
-
-        self::$Dt->collection->game_activity->updateMany(
-            ['player_id' => $LastUserID],
-            ['$set' => [
-                'player_id' => $NewUserId,
-            ]]
-        );
-
-
-        self::$Dt->collection->game_activity->updateMany(
-            ['to' => $LastUserID],
-            ['$set' => [
-                'to' => $NewUserId,
-            ]]
-        );
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "✅ کیل ها با موفقیت منقل شد.",
-            'parse_mode' => 'HTML',
-        ]);
-
-        Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' =>  "✅ اطلاعات حساب کاربری با موفقیت منتقل شد.",
-            'parse_mode' => 'HTML',
-        ]);
-
-
-        return Request::sendMessage([
-            'chat_id' => $NewUserId,
-            'text' =>  "حساب کاربری قبلی شما به حساب کاربری جدید شما انتقال یافت ",
-            'parse_mode' => 'HTML',
-        ]);
-
-    }
-
-    public static function BuyRole(){
-        if((int) self::$Dt->user_id !== 556635252  && (int) self::$Dt->user_id !==  630127836 ){
-            return false;
-        }
-        $UserId = false;
-        if(self::$Dt->ReplayTo) {
-            $UserId = self::$Dt->ReplayTo;
-        }
-
-        if(isset(self::$Dt->message->getEntities()[1])){
-            if(self::$Dt->message->getEntities()[1]->getUser()) {
-                $UserId = self::$Dt->message->getEntities()[1]->getUser()->getId();
-            }
-        }
-
-        $Text = self::$Dt->text;
-        $Explode = explode(' ',$Text);
-        if(isset($Text) && count($Explode) > 0) {
-            if(is_numeric($Explode[0]) and strlen($Explode[0]) > 7) {
-                $UserId = (float) trim(self::$Dt->text);
-            }elseif(preg_match("/^(?:[a-zA-Z0-9?. ]?)+@([a-zA-Z0-9]+)(.+)?$/",$Text,$matches)){
-                $username = $matches[0];
-            }
-
-            if(isset($username)){
-                $check = GR::CheckUserByUsername($username);
-                if(!$check){
-                    return  Request::sendMessage([
-                        'chat_id' => self::$Dt->chat_id,
-                        'text' => self::$Dt->L->_('NotFindeSmiteUserName',array("{0}" => $username)),
-                        'reply_to_message_id' => self::$Dt->message_id,
-                        'parse_mode' => 'HTML'
-                    ]);
-                }
-                $UserId = $check['user_id'];
-            }
-
-
-
-        }
-
-        if(!$UserId){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'بر روی کاربر مورد نظر ریپلای نمایید و یا ایدی عددی آنرا وارد کنید!',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        $GetPlayer = GR::CheckUserById($UserId);
-
-        if(!$GetPlayer){
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => 'کاربر یافت نشد!',
-                'parse_mode' => 'HTML'
-            ]);
-        }
-
-        $lastCheck  = GR::checkLastByRole($GetPlayer['user_id'],'role_dozd');
-       if($lastCheck){
-           return Request::sendMessage([
-               'chat_id' => self::$Dt->user_id,
-               'text' => 'این کاربر از قبل این نقش را خریداری کرده است!',
-               'parse_mode' => 'HTML'
-           ]);
-       }
-       $insert = GR::ByRole((float) $GetPlayer['user_id'],'role_dozd');
-         Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' => 'با موفقیت نقش برای کاربر '.$GetPlayer['fullname']."(".$GetPlayer['user_id'].")".' خریداری شد!',
-            'parse_mode' => 'HTML'
-        ]);
-        return Request::sendMessage([
-            'chat_id' => $GetPlayer['user_id'],
-            'text' => 'نقش دزد  😈 برای شما فعال شد! با ارسال دستور /mysetting میتوانید آنرا مدیریت نمایید!',
-            'parse_mode' => 'HTML'
-        ]);
-
-    }
-
-
-
-    public static function CM_MySetting(){
-        $BuyPlayer =  GR::GetRoleBuy(self::$Dt->user_id);
-        if(!$BuyPlayer){
-            return  Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => self::$Dt->L->_('NotBuyRole'),
-                'parse_mode' => 'HTML',
-            ]);
-        }
-
-        $re = [];
-        foreach ($BuyPlayer as $row){
-            $Active =  ($row['active'] ? "✅" : "⛔️");
-            $re[] = [
-                ['text' => "نقش :   ".self::$Dt->LG->_($row['role']."_n")."     ".$Active, 'callback_data' => "SGFDRol|" . $row['role']]
-            ];
-        }
-
-
-        $inline_keyboard = new InlineKeyboard(...$re);
-
-        return  Request::sendMessage([
-            'chat_id' => self::$Dt->user_id,
-            'text' => self::$Dt->L->_('MyRoleSetting'),
-            'parse_mode' => 'HTML',
-            'reply_markup' => $inline_keyboard,
-        ]);
-    }
-
-
-    public static function ChangeRoleSetting($Ex){
-        $role = $Ex[1];
-        GR::UpdateSettingRole($role);
-        $BuyPlayer =  GR::GetRoleBuy(self::$Dt->user_id);
-        if(!$BuyPlayer){
-            return  Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => self::$Dt->L->_('NotBuyRole'),
-                'parse_mode' => 'HTML',
-            ]);
-        }
-
-        $re = [];
-        foreach ($BuyPlayer as $row){
-            $Active =  ($row['active'] ? "✅" : "⛔️");
-            $re[] = [
-                ['text' => "نقش :   ".self::$Dt->LG->_($row['role']."_n")."     ".$Active, 'callback_data' => "SGFDRol|" . $row['role']]
-            ];
-        }
-
-
-        $inline_keyboard = new InlineKeyboard(...$re);
-        Request::editMessageText([
-            'chat_id' => self::$Dt->user_id,
-            'text' => self::$Dt->L->_('MyRoleSetting'),
-            'message_id' => self::$Dt->message_id,
-            'parse_mode' => 'HTML',
-            'reply_markup' => $inline_keyboard,
-        ]);
-
-
-    }
-
-
-    public static function  CM_KillList($type = 'day',$send = true){
-
-        $Nop = RC::Noperfix();
-
-
-
-        if($type == 'day') {
-            $date = date('Y-m-d');
-            $end = date('Y-m-d',strtotime( '+1 '.$type));
-        }else{
-            $date = date('Y-m-d',strtotime( ' -1 '.$type));
-            $end = date('Y-m-d');
-        }
-
-
-        if(!$Nop->exists('GetDataKills2:'.$end.":".$date)) {
-            $Lists = GR::getKillTopList($date, $end);
-            $MSg = GR::ConvertListData($Lists);
-            $EndText = self::$Dt->L->_('GetListKills', array("{0}" => self::$Dt->L->_($type), '{1}' => jdate('Y-m-d',strtotime($date)), '{2}' => jdate('Y-m-d',strtotime($end)), '{3}' => $MSg));
-            $Nop->set('GetDataKills2:'.$end.":".$date,$EndText);
-            if($type == 'day') {
-                $Nop->expire('GetDataKills2:'.$end.":".$date,3600);
-            }
-        }else{
-            $EndText = $Nop->get('GetDataKills2:'.$end.":".$date);
-
-        }
-
-
-        $reply_markup =  new InlineKeyboard(
-            [
-                ['text' => self::$Dt->L->_('TodayKillList')." ".($type == 'day' ? '✅' : ''), 'callback_data' => "getKilllist/day" ],
-                ['text' => self::$Dt->L->_('WeekKillList')." ".($type == 'week' ? '✅' : ''), 'callback_data' => "getKilllist/week"],
-                ['text' => self::$Dt->L->_('MonthList')." ".($type == 'month' ? '✅' : ''), 'callback_data' => "getKilllist/month" ],
-
-            ]
-        );
-
-        if($send) {
-            return Request::sendMessage([
-                'chat_id' => self::$Dt->user_id,
-                'text' => $EndText,
-                'parse_mode' => 'HTML',
-                'reply_markup' => $reply_markup,
-            ]);
-        }
-
-        $re = Request::editMessageText([
-            'chat_id' => self::$Dt->user_id,
-            'message_id' => self::$Dt->message_id,
-            'text' => $EndText,
-            'reply_markup' => $reply_markup,
-            'parse_mode' => 'HTML'
-        ]);
-        return Request::answerCallbackQuery(['callback_query_id' => self::$Dt->callback_id]);
-
-
-    }
-
 }

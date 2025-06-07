@@ -9,7 +9,7 @@ use Longman\TelegramBot\Entities\Keyboard;
 class VT
 {
     /**
-     * Cron objectf
+     * Cron object
      *
      * @var \phpcron\CronBot\cron
      */
@@ -79,13 +79,13 @@ class VT
 
     public static function GetUserVoteToR($user_id){
         $R = R::LRange(0,-1,'GamePl:Selected:Vote:'.$user_id);
+        $re = [];
         $Voter = [];
         foreach ($R as $row){
             $json = json_decode($row,true);
-            if(is_array($json)) {
-                if (!in_array($json['user_id'], $Voter)) {
-                    $Voter[] = ['user_id' => $json['user_id'], 'name' => $json['name']];
-                }
+            if(!in_array($json['user_id'],$Voter)) {
+                array_push($Voter,[ ['user_id' => $json['user_id'] ,'name' => $json['name'] ] ]);
+                $Voter[] = ['user_id' => $json['user_id'] ,'name' => $json['name'] ];
             }
         }
 
@@ -126,37 +126,37 @@ class VT
         if(!$Vote){
             return false;
         }
-     
+
+        $VoteData  = $Vote['data'];
         R::Del('GamePl:VoteCount');
 
-            if(isset($Vote['data'])) {
-                $VoteData = $Vote['data'];
-                // اگه رای گیری مخفی فعال بود
-                if (R::Get('secret_vote') == "onr" && R::Get('secret_vote_count') == "onr") {
-                    $Re = [];
-                    foreach ($VoteData as $row) {
-                        $Player = HL::_getPlayer($row['user_id']);
-                        $PlayerName = HL::ConvertName($Player['user_id'], $Player['fullname_game']);
-                        $NameVote = (R::Get('secret_vote_name') == "onr" ? self::GetUserVoteTo($row['user_id']) : "");
-                        $Lang = self::$Dt->LG->_('SecretLynchResultNumber', array("{0}" => $row['total'], "{1}" => $PlayerName, "{2}" => $NameVote)) . PHP_EOL;
-                        array_push($Re, $Lang);
-                    }
-                    $langRe = self::$Dt->LG->_('SecretLynchResultFull', array("{0}" => PHP_EOL . implode(PHP_EOL, $Re)));
-                    HL::SendMessage($langRe);
+        if(is_array($VoteData)) {
+            // اگه رای گیری مخفی فعال بود
+            if (R::Get('secret_vote') == "onr" && R::Get('secret_vote_count') == "onr") {
+                $Re = [];
+                foreach ($VoteData as $row) {
+                    $Player = HL::_getPlayer($row['user_id']);
+                    $PlayerName = HL::ConvertName($Player['user_id'], $Player['fullname_game']);
+                    $NameVote = (R::Get('secret_vote_name') == "onr" ? self::GetUserVoteTo($row['user_id']) : "");
+                    $Lang = self::$Dt->LG->_('SecretLynchResultNumber',array("{0}" =>  $row['total'],"{1}" =>  $PlayerName, "{2}" =>  $NameVote)) . PHP_EOL;
+                    array_push($Re, $Lang);
                 }
+                $langRe = self::$Dt->LG->_('SecretLynchResultFull', PHP_EOL . array("{0}" =>  implode(PHP_EOL, $Re)));
+                HL::SendMessage($langRe);
             }
+        }
 
-            if($Vote['state'] == false){
-                if(R::CheckExit('GamePl:role_Ruler:RulerOk')){
-                    $GroupMessage = self::$Dt->LG->_('RuleTimeEnd');
-                    HL::SaveMessage($GroupMessage);
-                    return true;
-                }
-
-                $GroupMessage = self::$Dt->LG->_('no_kill');
+        if($Vote['state'] == false){
+            if(R::CheckExit('GamePl:role_Ruler:RulerOk')){
+                $GroupMessage = self::$Dt->LG->_('RuleTimeEnd');
                 HL::SaveMessage($GroupMessage);
                 return true;
             }
+
+            $GroupMessage = self::$Dt->LG->_('no_kill');
+            HL::SaveMessage($GroupMessage);
+            return true;
+        }
 
 
         $UserDetial = HL::_getPlayer($Vote['user_id']);
@@ -173,12 +173,29 @@ class VT
         }elseif($UserDetial['user_role'] == "role_Shahzade" && R::CheckExit('GamePl:role_Shahzade:KillShahzade')){
             //Spoiled_Rich_Brat » شاهزاده باشیو دو شب اعدامت کنن
             HL::SavePlayerAchivment($UserDetial['user_id'],'Spoiled_Rich_Brat');
-        }elseif($UserDetial['user_role'] == "role_BlackKnight"){
-            if(R::CheckExit('GamePl:BlackVoteNo')){
-                $Count =  (int) R::Get('GamePl:BlackVoteNo') - 1;
-                if($Count <= 0 ){
-                    R::Del('GamePl:BlackVoteNo');
                 }
+                }
+                $GroupMessage = self::$Dt->LG->_('BlackKnightKillVote', array("{0}" => $Name));
+                HL::SaveMessage($GroupMessage);
+                R::GetSet($Count,'GamePl:BlackVoteNo');
+                return true;
+            }
+        }
+        if($UserDetial['user_role'] == "role_feriga" && !R::CheckExit('GamePl:role_feriga:hilled')){
+            $GroupMessage = self::$Dt->LG->_('ViegoHillFeriga', array("{0}" =>  $Name));
+            HL::SaveMessage($GroupMessage);
+            R::GetSet(true,'GamePl:role_feriga:hilled');
+            return true;
+        }
+
+        if($UserDetial['user_role'] == "role_viego" && !R::CheckExit('GamePl:role_viego:hilled')){
+            $GroupMessage = self::$Dt->LG->_('FerigaNotKillInVote', array("{0}" =>  $Name));
+            HL::SaveMessage($GroupMessage);
+            R::GetSet(true,'GamePl:role_viego:hilled');
+            return true;
+        }
+
+        }
                 $GroupMessage = self::$Dt->LG->_('BlackKnightKillVote', array("{0}" => $Name));
                 HL::SaveMessage($GroupMessage);
                 R::GetSet($Count,'GamePl:BlackVoteNo');
@@ -213,20 +230,10 @@ class VT
             HL::GamedEnd('monafeq');
         }
 
-        if(R::CheckExit("GamePl:KhalifaSelectRole")){
-                $USerID = R::Get("GamePl:KhalifaSelectRoleUserId");
-                if((float) $UserDetial['user_id'] == (float) $USerID){
-                    R::Del('GamePl:KhalifaSelectRoleAs');
-                    R::Del('GamePl:KhalifaSelectRole');
-                    $GroupMessage = self::$Dt->LG->_('VoteKillPlayer',array("{0}" => $Name));
-                    HL::SaveMessage($GroupMessage);
-                }
-        }
         $Array = array(
             "{0}" => $Name,
             "{1}" => self::$Dt->LG->_('user_role',array("{0}" => self::$Dt->LG->_($UserDetial['user_role']."_n")))
         );
-
 
         $GroupMessage = self::$Dt->LG->_('killed_user',$Array);
 
@@ -377,9 +384,6 @@ class VT
 
 
         if(R::CheckExit('GamePl:role_Solh:GroupInSolh')){
-            return false;
-        }
-        if(R::CheckExit('GamePl:SharlatanINTabar')){
             return false;
         }
 

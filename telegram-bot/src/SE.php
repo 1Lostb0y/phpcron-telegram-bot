@@ -14,120 +14,87 @@ class SE
 
 
     public static function GetModeRole($Mode){
-        if($Mode == "Madness"){
-            return self::GetMadness();
-        }elseif($Mode == "Punisher"){
-            return self::PunisherRole();
-        }elseif($Mode == "sincity"){
-            return self::sincityRole();
-        }elseif($Mode == "Vampire"){
-            return self::VampireRole();
-        }elseif($Mode == "Romantic"){
-            return self::RomanticRole();
-        }elseif($Mode == "SuperNatrual"){
-            return self::SuperNatrualRole();
-        }elseif($Mode == "Werewolf"){
-            return self::WerewolfRole();
-        }elseif($Mode == "coin"){
-            return self::WerewolfRole();
-        }elseif($Mode == "western"){
-            return self::Western();
-        }else{
-            return  [];
+        switch ($Mode) {
+            case "Normal":
+                return self::GetRole();
+            case "Mighty":
+                return self::mightyRole();
+            case "Easy":
+                return self::EasyRole();
+            case "Vampire":
+                return self::VampireRole();
+            case "Romantic":
+                return self::RomanticRole();
+            case "SuperNatrual":
+                return self::SuperNatrualRole();
+            case "Werewolf":
+                return self::WolfRole();
+            case "coin":
+                return self::WolfRole();
+            case "western":
+                return self::Western();
+            default:
+                return self::GetRole();
         }
     }
-
-    public static function Western(){
+    public static function RoleMafiaMode(){
+        return [
+            'role_Detective',
+            'role_Doctor',
+            'role_Routine',
+        ];
+        return $roles;
+    }
+    public static function SuperNatrualRole(){
         $roles =[
-            'role_Shahzade',
-            'role_Ruler',
+            'role_feramason',
             'role_Margita',
-            'role_babr',
-            'role_Chemist',
-            'role_lucifer',
-            'role_tofangdar',
-            'role_Sweetheart',
-            'role_Kadkhoda',
-            'role_kalantar',
-            'role_Knight',
-            'role_Cow',
-            'role_Sharlatan',
-            'role_Bloodthirsty',
-            'role_wolfsilver',
-            'role_Qatel',
-            'role_Archer',
-            'role_hilda',
-            'role_morgana',
-            'role_midwolf',
-            'role_elahe',
-            'role_orlok',
-            'role_Vampire',
-            'role_IceQueen',
-            'role_Madosa',
-            'role_Firefighter',
-            'role_Lilis',
-            'role_forestQueen',
-            'role_viego',
-            'role_feriga',
-            'role_isra',
-            'role_Vampire',
-            'role_Vampire',
-            'role_Vampire',
-            'role_kentvampire',
-            'role_Fereshte',
-            'role_BlackKnight',
-            'role_BrideTheDead',
-
+            'role_pishgo',
         ];
         
         return $roles;
     }
-    
-
+    public static function MafiaRole(){
+        return [
+            'role_Mafiaboss',
+            'role_Terrorist',
+            'role_Mafia'];
+    }
 
     public static function RomanticRole(){
         $roles =[
+            'role_rosta',
             'role_feramason',
-            'role_Cow',
             'role_pishgo',
-            'role_Margita',
             'role_karagah',
-            'role_babr',
             'role_tofangdar',
+            'role_isra',
             'role_rishSefid',
+            'role_Augur',
             'role_Gorgname',
             'role_Nazer',
+            'role_Hamzad',
+            'role_Huntsman',
             'role_kalantar',
             'role_Fereshte',
             'role_Ahangar',
             'role_KhabGozar',
             'role_Khaen',
+            'role_hilda',
             'role_Kadkhoda',
             'role_Mast',
             'role_Vahshi',
+            'role_Chemist',
             'role_Shahzade',
-            'role_faheshe',
-            'role_ngativ',
-            'role_ahmaq',
+            'role_Qatel',
             'role_PishRezerv',
             'role_PesarGij',
             'role_NefrinShode',
             'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
-            'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
-            'role_monafeq',  
-            'role_Khalifa',
-            'role_Hamzad',
             'role_lucifer',
-            'role_Honey',
-            'role_enchanter',
+            'role_shekar',
+            'role_monafeq',
+            'role_ahmaq',
             'role_ferqe',
             'role_WhiteWolf',
             'role_forestQueen',
@@ -135,8 +102,6 @@ class SE
             'role_betaWolf',
             'role_ferqe',
             'role_IceDragon',
-            'role_Vampire',
-            'role_WolfJadogar',
             'role_Vampire',
             'role_Bloodthirsty',
             'role_kentvampire',
@@ -186,195 +151,46 @@ class SE
             'role_Shahzade',
             'role_faheshe',
             'role_ngativ',
-            'role_ahmaq',
-            'role_PishRezerv',
-            'role_PesarGij',
-            'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Sweetheart',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
-            'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
-            'role_Vampire',
-            'role_Sharlatan',
-            'role_hilda',
-            'role_morgana',
-            'role_Archer',
-            'role_Qatel',
-            'role_Vampire',
-            'role_Madosa',
-            'role_Honey',
-            'role_enchanter',
-            'role_Vampire',
-            'role_Vampire',
-            'role_Bloodthirsty',
-            'role_kentvampire',
-        ];
-        return $roles;
-    }
-    public static function sincityRole(){
-        $roles =[
-            'role_feramason',
-            'role_pishgo',
-            'role_Margita',
-            'role_Cow',
-            'role_karagah',
-            'role_babr',
-            'role_elahe',
-            'role_midwolf',
-            'role_wolfsilver',
-            'role_feramason',
-            'role_tofangdar',
-            'role_rishSefid',
-            'role_Gorgname',
-            'role_Nazer',
-            'role_kalantar',
-            'role_Fereshte',
-            'role_Ahangar',
-            'role_KhabGozar',
-            'role_Khaen',
-            'role_Kadkhoda',
-            'role_Mast',
-            'role_Vahshi',
-            'role_Shahzade',
-            'role_faheshe',
-            'role_ngativ',
-            'role_ahmaq',
-            'role_PishRezerv',
-            'role_PesarGij',
-            'role_NefrinShode',
-            'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Sweetheart',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
-            'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
-           'role_monafeq',
-            'role_Khalifa',
-            'role_Hamzad',
-            'role_lucifer',
-            'role_Honey',
-            'role_ferqe',
-            'role_IceDragon',
-            'role_enchanter',
-            'role_WhiteWolf',
-            'role_ferqe',
-            'role_forestQueen',
-            'role_betaWolf',
             'role_WolfJadogar',
-            'role_ferqe',
-            'role_Royce',
-            'role_franc',
-            'role_shekar',
-            'role_Joker',
-            'role_Harly',
-            'role_Qatel',
-            'role_morgana',
-            'role_Sharlatan',
-            'role_Archer',
-            'role_hilda',
-        ];
-        return $roles;
-    }
-    public static function GetMadness(){
-        $roles =[
-            'role_feramason',
-            'role_pishgo',
-            'role_BlackKnight',
-            'role_BrideTheDead',
-            'role_Margita',
-            'role_karagah',
-            'role_elahe',
-            'role_babr',
-            'role_tofangdar',
-            'role_rishSefid',
-            'role_Gorgname',
-            'role_Cow',
-            'role_Nazer',
-            'role_kalantar',
-            'role_Fereshte',
-            'role_Ahangar',
-            'role_KhabGozar',
-            'role_Khaen',
-            'role_Kadkhoda',
-            'role_Mast',
-            'role_Vahshi',
-            'role_Shahzade',
-            'role_faheshe',
-            'role_ngativ',
-            'role_ahmaq',
-            'role_PishRezerv',
-            'role_PesarGij',
-            'role_NefrinShode',
-            'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Sweetheart',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
             'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
-           'role_monafeq',
-            'role_Khalifa',
-            'role_Hamzad',
-            'role_lucifer',
-            'role_Honey',
-            'role_enchanter',
-            'role_WhiteWolf',
-            'role_forestQueen',
-            'role_betaWolf',
-            'role_WolfJadogar',
-            'role_Vampire', 
-            'role_orlok',
-            'role_Bloodthirsty',
-            'role_kentvampire',
-            'role_ferqe',
-            'role_IceDragon',
-            'role_Royce',
-            'role_franc',
-            'role_shekar',
-            'role_Joker',
-            'role_Harly',
-            'role_Qatel',
-            'role_morgana',
-            'role_Sharlatan',
-            'role_Archer',
-            'role_hilda',
             'role_Firefighter',
             'role_IceQueen',
-            'role_Lilis',
-            'role_Madosa',
+            'role_Spy',
+            'role_Ruler',
+            'role_Honey',
+            'role_Knight',
+            'role_forestQueen',
+            'role_enchanter',
+            'role_Archer',
+            'role_Vampire',
+            'role_Bloodthirsty'
+
+            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ];
 
         return $roles;
     }
-    public static function SuperNatrualRole(){
+    public static function GetRole(){
         $roles =[
+            'role_rosta',
             'role_feramason',
-            'role_Margita',
             'role_pishgo',
             'role_karagah',
+            'role_elahe',
+            'role_isra',
+            'role_Augur',
             'role_tofangdar',
-            'role_babr',
+            'role_hilda',
             'role_rishSefid',
+            'role_Huntsman',
+            'role_Chemist',
             'role_Gorgname',
             'role_Nazer',
+            'role_Hamzad',
             'role_kalantar',
             'role_Fereshte',
-            'role_Cow',
+            'role_Sweetheart',
             'role_Ahangar',
             'role_KhabGozar',
             'role_Khaen',
@@ -382,164 +198,136 @@ class SE
             'role_Mast',
             'role_Vahshi',
             'role_Shahzade',
-            'role_faheshe',
-            'role_ngativ',
-            'role_ahmaq',
+            'role_Qatel',
             'role_PishRezerv',
             'role_PesarGij',
             'role_NefrinShode',
             'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
+            'role_lucifer',
+            'role_shekar',
             'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
             'role_monafeq',
-            'role_Khalifa',
-            'role_Hamzad',
-            'role_lucifer',
-            'role_Honey',
-            'role_enchanter',
-            'role_WhiteWolf',
-            'role_forestQueen',
-            'role_betaWolf',
-            'role_BrideTheDead',
-            'role_WolfJadogar',
-            'role_Lilis',
-            'role_Madosa',
-            'role_Firefighter',
-            'role_IceQueen',
-            'role_wolfsilver',
-            'role_BlackKnight',
-            'role_Joker',
-            'role_Harly',
-            'role_Vampire',
-            'role_Bloodthirsty',
-            'role_kentvampire',
-            'role_IceDragon',
-        ];
-        return $roles;
-    }
-    public static function PunisherRole(){
-        $roles =[
-            'role_feramason',
-            'role_Margita',
-            'role_wolfsilver',
-            'role_pishgo',
-            'role_karagah',
-            'role_elahe',
-            'role_babr',
-            'role_tofangdar',
-            'role_BlackKnight',
-            'role_BrideTheDead',
-            'role_Nazer',
-            'role_Cow',
-            'role_kalantar',
-            'role_Fereshte',
-            'role_KhabGozar',
-            'role_Kadkhoda',
-            'role_Shahzade',
+            //'role_Botanist',
+            'role_ahmaq',
+            'role_ferqe',
             'role_faheshe',
             'role_ngativ',
-            'role_ahmaq',
-            'role_PishRezerv',
-            'role_Solh',
-            'role_Ruler',
-            'role_Spy',
-            'role_Sweetheart',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
-            'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
-           'role_monafeq',
-           'role_Khalifa',
-            'role_Hamzad',
-            'role_lucifer',
-            'role_Qatel',
-            'role_morgana',
-            'role_Sharlatan',
-            'role_Archer',
-            'role_hilda',
+            'role_WolfJadogar',
             'role_Firefighter',
             'role_IceQueen',
-            'role_Lilis',
-            'role_Madosa',
+            'role_Spy',
+            'role_Ruler',
+            // 'role_Sweetheart',
+            'role_Honey',
+            'role_Knight',
+            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ];
 
         return $roles;
     }
-    public static function WerewolfRole(){
+    public static function EasyRole(){
         $roles =[
+            'role_rosta',
             'role_feramason',
-            'role_Margita',
             'role_pishgo',
             'role_karagah',
-            'role_wolfsilver',
             'role_elahe',
             'role_tofangdar',
-            'role_babr',
-           'role_Cow',
-          //  'role_viego',
-            //'role_feriga',
+            'role_Huntsman',
             'role_rishSefid',
+            'role_feramason',
             'role_Gorgname',
+            'role_lucifer',
             'role_Nazer',
+            'role_Hamzad',
             'role_kalantar',
             'role_Fereshte',
-            'role_feramason',
-            'role_midwolf',
             'role_Ahangar',
             'role_KhabGozar',
             'role_Khaen',
             'role_Kadkhoda',
             'role_Mast',
-            'role_feramason',
             'role_Vahshi',
             'role_Shahzade',
-            'role_ferqe',
-            'role_faheshe',
-            'role_ngativ',
-            'role_ahmaq',
-            'role_ferqe',
-            'role_shekar',
+            'role_Qatel',
             'role_PishRezerv',
             'role_PesarGij',
             'role_NefrinShode',
             'role_Solh',
-            'role_Ruler',
-            'role_ferqe',
-            'role_franc',
-            'role_IceDragon',
-            'role_Spy',
-            'role_Sweetheart',
-            'role_Knight',
-            'role_isra',
-            'role_Huntsman',
-            'role_trouble',
-            'role_Chemist',
-            'role_Princess',
-            'role_Phoenix',
+            'role_shekar',
             'role_monafeq',
-            'role_Khalifa',
-            'role_Hamzad',
-            'role_lucifer',
-            'role_Honey',
-            'role_enchanter',
-            'role_WhiteWolf',
-            'role_forestQueen',
-            'role_betaWolf',
+            'role_ahmaq',
+            'role_ferqe',
+            'role_trouble',
+            'role_faheshe',
+            'role_ngativ',
             'role_WolfJadogar',
+            'role_Firefighter',
+            'role_Ruler',
+            'role_WhiteWolf',
+            //  'role_Sweetheart',
+            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ];
+
         return $roles;
     }
 
+
+    public static function VampireRole2(){
+        $roles =[
+            'role_rosta',
+            'role_feramason',
+            'role_pishgo',
+            'role_karagah',
+            'role_elahe',
+            'role_tofangdar',
+            'role_Augur',
+            'role_rishSefid',
+            'role_hilda',
+            'role_feramason',
+            'role_Gorgname',
+            'role_Sweetheart',
+            'role_lucifer',
+            'role_Nazer',
+            'role_Hamzad',
+            'role_kalantar',
+            'role_isra',
+            'role_Huntsman',
+            'role_Fereshte',
+            'role_Ahangar',
+            'role_KhabGozar',
+            'role_Khaen',
+            'role_Kadkhoda',
+            'role_Chemist',
+            'role_Mast',
+            'role_Vahshi',
+            'role_Shahzade',
+            'role_Qatel',
+            'role_PishRezerv',
+            'role_PesarGij',
+            'role_NefrinShode',
+            'role_Solh',
+            'role_shekar',
+            'role_monafeq',
+            'role_ahmaq',
+            'role_ferqe',
+            'role_faheshe',
+            'role_ngativ',
+            'role_WolfJadogar',
+            'role_Firefighter',
+            'role_trouble',
+            'role_Ruler',
+            'role_Vampire',
+            'role_Bloodthirsty'
+            //  'role_Sweetheart',
+            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ];
+
+        return $roles;
+    }
 
 
     public static function WolfRole(){
@@ -548,6 +336,92 @@ class SE
             'role_WolfGorgine',
             'role_Wolfx',
             'role_WolfAlpha',
+        ];
+
+        return $roles;
+    }
+
+    public static function Western(){
+        $roles = [
+            'role_Sheriff',
+            'role_Deputy',
+            'role_Outlaw',
+            'role_Cowboy',
+        ];
+
+        return $roles;
+    }
+
+    // start mighty Mode
+    public static function mightyRole(){
+        $roles =[
+            'role_feramason',
+            'role_Margita',
+            'role_pishgo',
+            'role_karagah',
+            'role_wolfsilver',
+            'role_elahe',
+            'role_tofangdar',
+            'role_Sweetheart',
+            'role_Augur',
+            'role_rishSefid',
+            'role_Gorgname',
+            'role_Nazer',
+            'role_Hamzad',
+            'role_kalantar',
+            'role_isra',
+            'role_hilda',
+            'role_Fereshte',
+            'role_Huntsman',
+            'role_Ahangar',
+            'role_KhabGozar',
+            'role_Khaen',
+            'role_Kadkhoda',
+            'role_Mast',
+            'role_feramason',
+            'role_Vahshi',
+            'role_Shahzade',
+            'role_Qatel',
+            'role_PishRezerv',
+            'role_Solh',
+            'role_shekar',
+            'role_monafeq',
+            'role_lucifer',
+            // 'role_Botanist',
+            'role_ferqe',
+            'role_faheshe',
+            'role_ngativ',
+            'role_ahmaq',
+            'role_ferqe',
+            'role_shekar',
+            'role_PishRezerv',
+            'role_PesarGij',
+            'role_NefrinShode',
+            'role_Solh',
+            'role_Ruler',
+            'role_ferqe',
+            'role_Royce',
+            'role_WhiteWolf',
+            'role_faheshe',
+            'role_WolfJadogar',
+            'role_forestQueen',
+            'role_Firefighter',
+            'role_IceQueen',
+            'role_Spy',
+            'role_Ruler',
+            'role_Chemist',
+            'role_enchanter',
+            // 'role_Sweetheart',
+            'role_Archer',
+            'role_Honey',
+            'role_Knight',
+            'role_isra',
+            'role_Huntsman',
+            'role_trouble',
+            'role_Vampire',
+            'role_Bloodthirsty'
+            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ];
 
         return $roles;
@@ -672,6 +546,10 @@ class SE
             case 'role_Qatel':
             case 'role_Archer':
             case 'role_hilda':  
+            case 'role_hilda':  
+            case 'role_morgana':
+            case 'role_Sharlatan':
+            case 'role_hilda':
             case 'role_morgana':
             case 'role_Sharlatan':
                 $team = "qatel";
@@ -968,49 +846,13 @@ class SE
 
         switch ($id){
             case 'eat_wolf':
-                $key = '93Xrd8P28iWnCfk5Na';
+                $key = 'Qu7oZZlivswWxP3lFz';
                 break;
             case 'kill_killer':
-                $key = 'hCLsO9kAUIeMQb0iwg';
+                $key = 'hqUur3CbdAVXRTtxSC';
                 break;
             case 'eat_vampire':
-                $key = 'iFEcAqCTzh1Z4qi3Yb';
-                break;
-            case 'madosa_kill_you':
-                $key = 'NZFPDXKEXkBwjDwuuj';
-                break;
-            case 'convert_cult':
-                $key = '7yolxdxdkRVEO3Rv1T'; //ok
-             break;
-            case 'hilda_killyou':
-                $key = 'IKRGH9ZAZIMgLdua4p'; //ok
-                break;
-            case 'hunter_kill_you':
-                $key = 'rUuiEgJNskRdcvRjER'; // ok
-                break;
-            case 'knight_kill_you':
-                $key = '4nU6M33d9rJFb6nLGH'; //ok
-                break;
-            case 'joker_kill_you':
-                $key = '7OnmxnCDG2uZy4QcO7'; //ok
-                break;
-            case 'faheshe_see_you':
-                $key = 'lncwn2tGe2mk7rY1tj'; //ok
-                break;
-            case 'isra_kill_you':
-                $key = 'AzNBBoegMIfScIPDaa'; //ok
-                break;
-            case 'archer_kill_you':
-                $key = 'HqaGrw8kOBBDV76bKs'; //ok
-                break;
-            case 'ice_you':
-                $key = 'UyBR6MNVbiI6aQu0ds'; //ok
-                break;
-            case 'prince_zd':
-                $key = 'RE8D3SJFdZnLRqODPn';//ok
-                break;
-            case 'firefighter_you':
-                $key = '0r0Z5iY7HXtp8LEqsE'; //ok
+                $key = 'hR6EaKMgC0vw3L3Y5m';
                 break;
             default:
                 $key = false;
