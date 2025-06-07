@@ -3,7 +3,7 @@
         'name' => 'phpcron/telegram-bot',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '94777ed93eb48ce03bb47a73b8601a9234c2127e',
+        'reference' => '927ad9e98ab36aee2a8a9da9e4fa1a821ef548f3',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'phpcron/telegram-bot' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '94777ed93eb48ce03bb47a73b8601a9234c2127e',
+            'reference' => '927ad9e98ab36aee2a8a9da9e4fa1a821ef548f3',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
