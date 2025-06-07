@@ -12,13 +12,12 @@ class CM
     /**
      * Cron object
      *
-     * @var \phpcron\CronBot\cron
+     * @var \phpcron\CronBot\Hook
      */
     private static $Dt;
 
     public static function initialize(Hook $Dt)
     {
-
         if (!($Dt instanceof Hook)) {
             throw new Exception\CronException('Invalid Hook Pointer!');
         }
